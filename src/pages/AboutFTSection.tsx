@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ArrowPathIcon,
   InformationCircleIcon,
   ArrowRightIcon,
@@ -15,7 +13,6 @@ import {
   BuildingOfficeIcon,
   NewspaperIcon,
   CalendarIcon,
-  SparklesIcon,
   ShieldCheckIcon,
   HeartIcon,
   LightBulbIcon,
@@ -26,14 +23,12 @@ import {
   ChartBarIcon,
   PlayCircleIcon,
   PauseCircleIcon,
-  SpeakerWaveIcon,
-  MagnifyingGlassIcon,
   ArrowsPointingOutIcon,
 } from "@heroicons/react/24/outline";
 import CountUp from "react-countup";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
-import { useEffect, useState, ElementType, ComponentType, JSX, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet";
 
 /* ────────────────────── CONSTANTS ────────────────────── */
@@ -1096,7 +1091,7 @@ const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscri
             viewport={{ once: true }}
             className="grid grid-cols-2 md:grid-cols-5 gap-4"
           >
-            {displaySubs.map((sub, idx) => (
+            {displaySubs.map((sub) => (
               <motion.div
                 key={sub.subscription_id}
                 variants={scaleIn}
@@ -1233,7 +1228,7 @@ const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
             viewport={{ once: true, amount: 0.2 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
-            {displayCards.map((card, idx) => {
+            {displayCards.map((card) => {
               const Icon = getIcon(card.type);
               const imageUrl = buildImageUrl(card.imageUrl) || "https://via.placeholder.com/600x400";
               
