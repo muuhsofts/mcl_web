@@ -36,6 +36,10 @@ import Footer from "../components/Footer";
 import { useEffect, useState, ElementType, ComponentType, JSX, useRef } from "react";
 import { Helmet } from "react-helmet";
 
+/* ────────────────────── CONSTANTS ────────────────────── */
+const PRIMARY_COLOR = "#0069B4";
+const SECONDARY_COLOR = "#ed1c24";
+
 /* ────────────────────── UTILITIES ────────────────────── */
 const stripHtml = (html: string): string => {
   const txt = html.replace(/<[^>]+>/g, "");
@@ -105,43 +109,79 @@ interface ValueData {
   updated_at: string;
 }
 
-/* ────────────────────── UNIFIED BACKGROUND MOTION SYSTEM WITH #0069B4 ────────────────────── */
+/* ────────────────────── BACKGROUND MOTION WITH #0069B4 ────────────────────── */
 const pageTransition: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.6 } },
   exit: { opacity: 0, transition: { duration: 0.4 } }
 };
 
+// Flowing gradient animation with #0069B4
 const backgroundFlow: Variants = {
   initial: { 
     backgroundPosition: "0% 0%",
-    opacity: 0.4
   },
   animate: { 
     backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
-    opacity: [0.4, 0.6, 0.4],
     transition: { 
-      duration: 30,
+      duration: 20,
       repeat: Infinity,
       ease: "linear",
-      repeatType: "loop"
     }
   }
 };
 
-const ambientPulse: Variants = {
-  initial: { scale: 1, opacity: 0.2 },
+// Pulsing effect with #0069B4
+const pulseEffect: Variants = {
+  initial: { opacity: 0.1 },
   animate: { 
-    scale: [1, 1.05, 1],
-    opacity: [0.2, 0.3, 0.2],
+    opacity: [0.1, 0.2, 0.1],
     transition: {
-      duration: 15,
+      duration: 4,
       repeat: Infinity,
       ease: "easeInOut"
     }
   }
 };
 
+// Floating particles with #0069B4
+const floatAnimation = (delay: number): Variants => ({
+  initial: { y: 0, x: 0, opacity: 0.1 },
+  animate: { 
+    y: [0, -30, 0, 30, 0],
+    x: [0, 20, -20, 20, 0],
+    opacity: [0.1, 0.15, 0.1, 0.15, 0.1],
+    transition: {
+      duration: 15 + delay,
+      repeat: Infinity,
+      ease: "easeInOut",
+      delay: delay
+    }
+  }
+});
+
+// Rotating ring with #0069B4
+const rotateRing: Variants = {
+  initial: { rotate: 0, scale: 1 },
+  animate: { 
+    rotate: 360,
+    scale: [1, 1.1, 1],
+    transition: {
+      rotate: {
+        duration: 25,
+        repeat: Infinity,
+        ease: "linear"
+      },
+      scale: {
+        duration: 8,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }
+    }
+  }
+};
+
+/* ────────────────────── ANIMATION VARIANTS FOR CONTENT ────────────────────── */
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
@@ -187,89 +227,179 @@ const slideUpBounce: Variants = {
   }
 };
 
-/* ────────────────────── BACKGROUND WRAPPER WITH #0069B4 ────────────────────── */
+/* ────────────────────── BACKGROUND WRAPPER WITH #0069B4 MOTION ────────────────────── */
 const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
   <div className={`relative overflow-hidden ${className}`}>
+    {/* Base gradient with #0069B4 flowing animation */}
     <motion.div
-      className="absolute inset-0 bg-gradient-to-br from-[#0069B4]/5 via-white to-red-50"
+      className="absolute inset-0"
       variants={backgroundFlow}
       initial="initial"
       animate="animate"
       style={{ 
+        background: `linear-gradient(125deg, 
+          ${PRIMARY_COLOR}03 0%, 
+          ${PRIMARY_COLOR}08 20%, 
+          transparent 40%, 
+          ${PRIMARY_COLOR}05 60%, 
+          ${PRIMARY_COLOR}01 80%, 
+          transparent 100%)`,
+        backgroundSize: "300% 300%",
+      }}
+    />
+
+    {/* Second gradient layer with opposite flow */}
+    <motion.div
+      className="absolute inset-0"
+      animate={{ 
+        backgroundPosition: ["100% 100%", "0% 0%", "100% 100%"],
+      }}
+      transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+      style={{ 
+        background: `radial-gradient(circle at 30% 50%, ${PRIMARY_COLOR}05 0%, transparent 50%)`,
         backgroundSize: "200% 200%",
       }}
     />
-    
+
+    {/* Pulsing glow with #0069B4 */}
     <motion.div
       className="absolute inset-0"
-      variants={ambientPulse}
+      variants={pulseEffect}
       initial="initial"
       animate="animate"
       style={{
-        background: "radial-gradient(circle at 50% 50%, rgba(0,105,180,0.03) 0%, transparent 50%)",
+        background: `radial-gradient(circle at 50% 50%, ${PRIMARY_COLOR}10 0%, transparent 70%)`,
       }}
     />
-    
+
+    {/* Grid pattern with #0069B4 */}
     <motion.div
-      className="absolute inset-0 opacity-5"
+      className="absolute inset-0"
       animate={{ 
-        backgroundPosition: ["0% 0%", "100% 100%"],
+        opacity: [0.02, 0.04, 0.02],
+        scale: [1, 1.1, 1],
       }}
-      transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       style={{
-        backgroundImage: "linear-gradient(to right, #0069B4 1px, transparent 1px), linear-gradient(to bottom, #ed1c24 1px, transparent 1px)",
-        backgroundSize: "50px 50px",
+        backgroundImage: `linear-gradient(to right, ${PRIMARY_COLOR} 1px, transparent 1px), 
+                          linear-gradient(to bottom, ${PRIMARY_COLOR} 1px, transparent 1px)`,
+        backgroundSize: "60px 60px",
       }}
     />
-    
-    {[...Array(5)].map((_, i) => (
+
+    {/* Floating particles with #0069B4 */}
+    {[...Array(8)].map((_, i) => (
       <motion.div
         key={i}
-        className="absolute rounded-full bg-gradient-to-r from-[#0069B4]/10 to-[#ed1c24]/10"
+        className="absolute rounded-full"
+        variants={floatAnimation(i * 2)}
+        initial="initial"
+        animate="animate"
         style={{
-          width: Math.random() * 300 + 100,
-          height: Math.random() * 300 + 100,
+          width: Math.random() * 200 + 50,
+          height: Math.random() * 200 + 50,
           left: `${Math.random() * 100}%`,
           top: `${Math.random() * 100}%`,
-          filter: "blur(60px)",
-        }}
-        animate={{
-          x: [0, Math.random() * 100 - 50, 0],
-          y: [0, Math.random() * 100 - 50, 0],
-        }}
-        transition={{
-          duration: 20 + i * 5,
-          repeat: Infinity,
-          ease: "easeInOut",
+          background: `radial-gradient(circle at center, ${PRIMARY_COLOR}15 0%, transparent 70%)`,
+          filter: "blur(40px)",
+          mixBlendMode: "multiply",
         }}
       />
     ))}
-    
+
+    {/* Rotating rings with #0069B4 */}
+    <motion.div
+      className="absolute inset-0"
+      variants={rotateRing}
+      initial="initial"
+      animate="animate"
+      style={{
+        background: `conic-gradient(from 0deg at 50% 50%, 
+          transparent 0deg, 
+          ${PRIMARY_COLOR}10 90deg, 
+          transparent 180deg, 
+          ${PRIMARY_COLOR}05 270deg, 
+          transparent 360deg)`,
+        filter: "blur(30px)",
+      }}
+    />
+
+    {/* Animated lines with #0069B4 */}
+    {[...Array(3)].map((_, i) => (
+      <motion.div
+        key={`line-${i}`}
+        className="absolute h-px w-full"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${PRIMARY_COLOR}20, transparent)`,
+          top: `${30 + i * 20}%`,
+        }}
+        animate={{
+          x: ["-100%", "100%"],
+          opacity: [0, 0.5, 0],
+        }}
+        transition={{
+          duration: 8 + i * 2,
+          repeat: Infinity,
+          ease: "linear",
+          delay: i * 2,
+        }}
+      />
+    ))}
+
+    {/* Animated dots with #0069B4 */}
+    {[...Array(15)].map((_, i) => (
+      <motion.div
+        key={`dot-${i}`}
+        className="absolute w-1 h-1 rounded-full"
+        style={{
+          backgroundColor: PRIMARY_COLOR,
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+        }}
+        animate={{
+          scale: [0, 1, 0],
+          opacity: [0, 0.3, 0],
+        }}
+        transition={{
+          duration: 4 + Math.random() * 4,
+          repeat: Infinity,
+          delay: Math.random() * 4,
+        }}
+      />
+    ))}
+
+    {/* Content */}
     <div className="relative z-10">
       {children}
     </div>
   </div>
 );
 
-/* ────────────────────── LOADER ────────────────────── */
+/* ────────────────────── LOADER WITH #0069B4 ────────────────────── */
 const LandingLoader: React.FC = () => (
   <motion.div
     initial={{ opacity: 1 }}
     exit={{ opacity: 0, transition: { duration: 0.5 } }}
-    className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0069B4] to-[#0069B4]/80 z-50"
+    className="fixed inset-0 flex flex-col items-center justify-center z-50"
+    style={{ background: PRIMARY_COLOR }}
   >
     <motion.div 
-      initial={{ opacity: 0, x: -20 }} 
-      animate={{ opacity: 1, x: 0, transition: { delay: 0.2 } }}
-      whileHover={{ scale: 1.1, rotate: 180 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      animate={{ 
+        scale: [1, 1.2, 1],
+        rotate: [0, 180, 360],
+      }}
+      transition={{ 
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
     >
-      <ArrowPathIcon className="w-16 h-16 text-white animate-spin" />
+      <ArrowPathIcon className="w-16 h-16 text-white" />
     </motion.div>
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.4 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
       className="text-2xl font-bold text-white tracking-wide mt-4"
     >
       Loading Our Story...
@@ -308,16 +438,18 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
         </motion.div>
       </AnimatePresence>
 
+      {/* Animated overlay with #0069B4 */}
       <motion.div
         className="absolute inset-0"
-        variants={backgroundFlow}
-        initial="initial"
-        animate="animate"
-        style={{
-          background: "linear-gradient(45deg, rgba(237,28,36,0.1) 0%, rgba(0,105,180,0.15) 50%, rgba(237,28,36,0.1) 100%)",
-          backgroundSize: "200% 200%",
-          mixBlendMode: "overlay",
+        animate={{
+          background: [
+            `linear-gradient(45deg, ${PRIMARY_COLOR}10 0%, transparent 50%, ${PRIMARY_COLOR}05 100%)`,
+            `linear-gradient(45deg, ${PRIMARY_COLOR}05 0%, transparent 50%, ${PRIMARY_COLOR}10 100%)`,
+            `linear-gradient(45deg, ${PRIMARY_COLOR}10 0%, transparent 50%, ${PRIMARY_COLOR}05 100%)`,
+          ],
         }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        style={{ mixBlendMode: "overlay" }}
       />
 
       <div className="relative z-10 h-full flex items-center">
@@ -330,9 +462,14 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
           >
             <motion.h1 
               className="text-4xl md:text-5xl font-bold text-white mb-3 leading-tight"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              animate={{ 
+                textShadow: [
+                  `0 0 20px ${PRIMARY_COLOR}`,
+                  `0 0 40px ${PRIMARY_COLOR}`,
+                  `0 0 20px ${PRIMARY_COLOR}`,
+                ]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             >
               {slide.heading || "Shaping Tanzania's Media Landscape"}
             </motion.h1>
@@ -355,13 +492,15 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
               className="flex items-center gap-4"
             >
               <motion.button 
-                className="group relative px-6 py-3 bg-[#ed1c24] text-white rounded-full overflow-hidden text-sm font-semibold"
+                className="group relative px-6 py-3 text-white rounded-full overflow-hidden text-sm font-semibold"
+                style={{ backgroundColor: SECONDARY_COLOR }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <span className="relative z-10">Discover Our Story</span>
                 <motion.div
-                  className="absolute inset-0 bg-[#0069B4]"
+                  className="absolute inset-0"
+                  style={{ backgroundColor: PRIMARY_COLOR }}
                   initial={{ x: "100%" }}
                   whileHover={{ x: 0 }}
                   transition={{ duration: 0.3 }}
@@ -373,9 +512,11 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
                   <motion.button
                     key={idx}
                     onClick={() => setCurrentSlide(idx)}
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      idx === currentSlide ? "w-8 bg-[#ed1c24]" : "w-3 bg-white/30 hover:bg-white/50"
-                    }`}
+                    className="h-1 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: idx === currentSlide ? 32 : 12,
+                      backgroundColor: idx === currentSlide ? SECONDARY_COLOR : 'rgba(255,255,255,0.3)'
+                    }}
                     whileHover={{ scale: 1.2 }}
                     whileTap={{ scale: 0.9 }}
                   />
@@ -442,7 +583,8 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
             <motion.div variants={fadeInLeft} className="space-y-4">
               <motion.span 
                 variants={fadeInUp}
-                className="inline-block px-3 py-1 bg-[#0069B4]/10 rounded-full text-xs font-semibold text-[#0069B4]"
+                className="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ backgroundColor: `${PRIMARY_COLOR}15`, color: PRIMARY_COLOR }}
               >
                 Who We Are
               </motion.span>
@@ -476,12 +618,20 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
               >
                 <div className="relative group">
                   <motion.div
-                    className="absolute -inset-4 bg-gradient-to-r from-[#0069B4]/20 to-[#ed1c24]/20 rounded-3xl blur-2xl"
+                    className="absolute -inset-4 rounded-3xl blur-2xl"
+                    style={{ background: PRIMARY_COLOR }}
                     animate={{ 
                       scale: isVideoHovered ? 1.1 : 1,
-                      opacity: isVideoHovered ? 0.6 : 0.3
+                      opacity: isVideoHovered ? 0.2 : 0.1
                     }}
                     transition={{ duration: 0.3 }}
+                  />
+                  
+                  <motion.div
+                    className="absolute -inset-2 border-2 border-dashed rounded-2xl"
+                    style={{ borderColor: `${PRIMARY_COLOR}30` }}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
                   />
                   
                   <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black aspect-video">
@@ -511,7 +661,7 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
                             <motion.button
                               onClick={togglePlay}
                               className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30"
-                              whileHover={{ scale: 1.1, backgroundColor: "#ed1c24" }}
+                              whileHover={{ scale: 1.1, backgroundColor: SECONDARY_COLOR }}
                               whileTap={{ scale: 0.9 }}
                             >
                               {isPlaying ? (
@@ -546,13 +696,13 @@ const VisionMissionSection: React.FC = () => {
       icon: EyeIcon,
       title: "Our Vision",
       description: "To be the leading digital multimedia company in Tanzania.",
-      color: "from-[#0069B4] to-[#0069B4]/80",
+      color: PRIMARY_COLOR,
     },
     {
       icon: RocketLaunchIcon,
       title: "Our Mission",
       description: "To enrich lives and empower positive change through superior media.",
-      color: "from-[#ed1c24] to-[#ed1c24]/80",
+      color: SECONDARY_COLOR,
     }
   ];
 
@@ -587,7 +737,8 @@ const VisionMissionSection: React.FC = () => {
               >
                 <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200">
                   <motion.div
-                    className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-5`}
+                    className="absolute inset-0 opacity-0 group-hover:opacity-5"
+                    style={{ background: `linear-gradient(135deg, ${item.color} 0%, ${item.color}dd 100%)` }}
                     initial={{ scale: 0 }}
                     whileHover={{ scale: 1 }}
                     transition={{ duration: 0.4 }}
@@ -595,7 +746,8 @@ const VisionMissionSection: React.FC = () => {
                   
                   <div className="flex items-center gap-4 mb-4">
                     <motion.div 
-                      className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-md`}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md"
+                      style={{ background: `linear-gradient(135deg, ${item.color} 0%, ${item.color}dd 100%)` }}
                       whileHover={{ rotate: 360 }}
                       transition={{ duration: 0.6 }}
                     >
@@ -662,21 +814,34 @@ const ValuesSection: React.FC<{ values: ValueData[]; onCardClick: (v: ValueData)
                   whileTap={{ scale: 0.98 }}
                   className="group relative text-left"
                 >
-                  <div className="relative bg-white/90 backdrop-blur-sm p-5 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all shadow-sm hover:shadow-lg">
+                  <div 
+                    className="relative bg-white/90 backdrop-blur-sm p-5 rounded-xl border hover:shadow-lg transition-all"
+                    style={{ borderColor: '#e5e7eb' }}
+                  >
                     <motion.div 
-                      className="w-10 h-10 mb-3 rounded-lg bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center"
+                      className="w-10 h-10 mb-3 rounded-lg flex items-center justify-center"
+                      style={{ background: `linear-gradient(135deg, ${PRIMARY_COLOR}15 0%, ${SECONDARY_COLOR}15 100%)` }}
                       whileHover={{ scale: 1.1, rotate: 5 }}
                     >
-                      <Icon className="w-5 h-5 text-[#0069B4] group-hover:text-[#ed1c24] transition-colors" />
+                      <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: PRIMARY_COLOR }} />
                     </motion.div>
                     
-                    <h3 className="text-sm font-bold text-gray-900 mb-1 group-hover:text-[#0069B4] transition-colors">
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 transition-colors duration-300 group-hover" 
+                        style={{ color: '#111827' }}>
                       {value.category}
                     </h3>
                     
                     <p className="text-xs text-gray-500 line-clamp-2">
                       {value.description ? value.description.substring(0, 50) + "..." : "Click to learn more"}
                     </p>
+
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 h-px origin-left"
+                      style={{ background: `linear-gradient(90deg, ${PRIMARY_COLOR}, ${SECONDARY_COLOR})` }}
+                      initial={{ scaleX: 0 }}
+                      whileHover={{ scaleX: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
                   </div>
                 </motion.button>
               );
@@ -725,7 +890,10 @@ const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscri
                 whileHover={{ y: -4 }}
                 className="group relative"
               >
-                <div className="relative bg-white/90 backdrop-blur-sm p-4 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all shadow-sm hover:shadow-lg text-center">
+                <div 
+                  className="relative bg-white/90 backdrop-blur-sm p-4 rounded-xl border hover:shadow-lg transition-all text-center"
+                  style={{ borderColor: '#e5e7eb' }}
+                >
                   <motion.div 
                     className="w-14 h-14 mx-auto mb-2 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-2"
                     whileHover={{ scale: 1.1, rotate: 5 }}
@@ -741,7 +909,8 @@ const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscri
                     {sub.category}
                   </h3>
                   
-                  <div className="text-lg font-bold text-[#0069B4]">
+                  <div className="text-lg font-bold transition-colors duration-300 group-hover" 
+                       style={{ color: PRIMARY_COLOR }}>
                     <CountUp
                       end={sub.total_viewers}
                       duration={2}
@@ -751,6 +920,14 @@ const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscri
                     />
                   </div>
                   <p className="text-xs text-gray-500">monthly</p>
+
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 h-px origin-left"
+                    style={{ background: `linear-gradient(90deg, ${PRIMARY_COLOR}, ${SECONDARY_COLOR})` }}
+                    initial={{ scaleX: 0 }}
+                    whileHover={{ scaleX: 1 }}
+                    transition={{ duration: 0.3 }}
+                  />
                 </div>
               </motion.div>
             ))}
@@ -855,7 +1032,7 @@ const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
                   className="group relative"
                 >
                   <div className="relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all border border-gray-200">
-                    {/* Image Container - Full width and properly sized */}
+                    {/* Image Container */}
                     <div className="relative h-64 w-full overflow-hidden bg-gray-100">
                       <motion.img
                         src={imageUrl}
@@ -883,11 +1060,15 @@ const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
                       
                       {/* Type badge */}
                       <div className="absolute top-3 left-3">
-                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 bg-white/90 backdrop-blur-sm border ${
-                          card.type === "Brand" ? "text-[#0069B4] border-[#0069B4]/20" :
-                          card.type === "News" ? "text-[#ed1c24] border-[#ed1c24]/20" :
-                          "text-purple-600 border-purple-200"
-                        }`}>
+                        <div 
+                          className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 bg-white/90 backdrop-blur-sm border"
+                          style={{ 
+                            color: card.type === "Brand" ? PRIMARY_COLOR : 
+                                   card.type === "News" ? SECONDARY_COLOR : "#7C3AED",
+                            borderColor: card.type === "Brand" ? `${PRIMARY_COLOR}30` : 
+                                        card.type === "News" ? `${SECONDARY_COLOR}30` : "#E9D5FF"
+                          }}
+                        >
                           <Icon className="w-3 h-3" />
                           <span>{card.type}</span>
                         </div>
@@ -904,18 +1085,25 @@ const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
                         {card.description.length > 100 ? `${card.description.slice(0, 100)}...` : card.description}
                       </p>
                       
-                      <motion.div
-                        whileHover={{ x: 5 }}
-                      >
+                      <motion.div whileHover={{ x: 5 }}>
                         <Link
                           to={card.linkUrl}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-[#0069B4] hover:text-[#ed1c24] transition-colors"
+                          className="inline-flex items-center gap-1 text-sm font-medium transition-colors duration-300"
+                          style={{ color: PRIMARY_COLOR }}
                         >
                           <span>Learn More</span>
                           <ArrowRightIcon className="w-3 h-3" />
                         </Link>
                       </motion.div>
                     </div>
+
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 h-px origin-left"
+                      style={{ background: `linear-gradient(90deg, ${PRIMARY_COLOR}, ${SECONDARY_COLOR})` }}
+                      initial={{ scaleX: 0 }}
+                      whileHover={{ scaleX: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
                   </div>
                 </motion.div>
               );
@@ -958,7 +1146,8 @@ const ValueModal: React.FC<{ value: ValueData; onClose: () => void }> = ({ value
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-          className="w-20 h-20 mx-auto mb-4 rounded-xl bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center"
+          className="w-20 h-20 mx-auto mb-4 rounded-xl flex items-center justify-center"
+          style={{ background: `linear-gradient(135deg, ${PRIMARY_COLOR}15 0%, ${SECONDARY_COLOR}15 100%)` }}
         >
           <img
             src={buildImageUrl(value.img_file) || "https://via.placeholder.com/80x80"}
@@ -974,6 +1163,14 @@ const ValueModal: React.FC<{ value: ValueData; onClose: () => void }> = ({ value
         <p className="text-gray-600 text-sm leading-relaxed">
           {value.description || "No description available."}
         </p>
+
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ delay: 0.4 }}
+          className="h-0.5 w-16 rounded-full mx-auto mt-6"
+          style={{ background: `linear-gradient(90deg, ${PRIMARY_COLOR} 0%, ${SECONDARY_COLOR} 100%)` }}
+        />
       </div>
     </motion.div>
   </motion.div>
