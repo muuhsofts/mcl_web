@@ -109,7 +109,7 @@ interface ValueData {
   updated_at: string;
 }
 
-/* ────────────────────── BACKGROUND MOTION WITH #0069B4 ────────────────────── */
+/* ────────────────────── BACKGROUND MOTION WITH RECT WIRE FRAMES ────────────────────── */
 const pageTransition: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.6 } },
@@ -181,6 +181,34 @@ const rotateRing: Variants = {
   }
 };
 
+// Wire frame animation
+const wireFrameAnimation: Variants = {
+  initial: { opacity: 0, pathLength: 0 },
+  animate: { 
+    opacity: [0.1, 0.3, 0.1],
+    pathLength: [0, 1, 0],
+    transition: {
+      duration: 8,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }
+  }
+};
+
+// Moving wire frame grid
+const wireFrameGrid: Variants = {
+  initial: { x: "-100%", y: "-100%" },
+  animate: { 
+    x: ["-100%", "100%", "-100%"],
+    y: ["-100%", "100%", "-100%"],
+    transition: {
+      duration: 20,
+      repeat: Infinity,
+      ease: "linear"
+    }
+  }
+};
+
 /* ────────────────────── ANIMATION VARIANTS FOR CONTENT ────────────────────── */
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -227,7 +255,7 @@ const slideUpBounce: Variants = {
   }
 };
 
-/* ────────────────────── BACKGROUND WRAPPER WITH #0069B4 MOTION ────────────────────── */
+/* ────────────────────── BACKGROUND WRAPPER WITH RECT WIRE FRAMES #0069B4 ────────────────────── */
 const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
   <div className={`relative overflow-hidden ${className}`}>
     {/* Base gradient with #0069B4 flowing animation */}
@@ -272,7 +300,7 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
       }}
     />
 
-    {/* Grid pattern with #0069B4 */}
+    {/* Grid pattern with #0069B4 - Base grid */}
     <motion.div
       className="absolute inset-0"
       animate={{ 
@@ -286,6 +314,191 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
         backgroundSize: "60px 60px",
       }}
     />
+
+    {/* RECTANGULAR WIRE FRAMES - Main Feature */}
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.3 }}>
+      <defs>
+        <pattern id="wireframe-pattern" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+          {/* Horizontal lines */}
+          <motion.line
+            x1="0" y1="0" x2="200" y2="0"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+          />
+          <motion.line
+            x1="0" y1="50" x2="200" y2="50"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 1 }}
+          />
+          <motion.line
+            x1="0" y1="100" x2="200" y2="100"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 2 }}
+          />
+          <motion.line
+            x1="0" y1="150" x2="200" y2="150"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 3 }}
+          />
+          <motion.line
+            x1="0" y1="200" x2="200" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 4 }}
+          />
+
+          {/* Vertical lines */}
+          <motion.line
+            x1="0" y1="0" x2="0" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.5 }}
+          />
+          <motion.line
+            x1="50" y1="0" x2="50" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 1.5 }}
+          />
+          <motion.line
+            x1="100" y1="0" x2="100" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 2.5 }}
+          />
+          <motion.line
+            x1="150" y1="0" x2="150" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 3.5 }}
+          />
+          <motion.line
+            x1="200" y1="0" x2="200" y2="200"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="5,5"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 4.5 }}
+          />
+
+          {/* Rectangular frames */}
+          <motion.rect
+            x="20" y="20" width="160" height="160"
+            fill="none"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="8,8"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 1 }}
+          />
+          <motion.rect
+            x="40" y="40" width="120" height="120"
+            fill="none"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="6,6"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 2 }}
+          />
+          <motion.rect
+            x="60" y="60" width="80" height="80"
+            fill="none"
+            stroke={PRIMARY_COLOR}
+            strokeWidth="1"
+            strokeDasharray="4,4"
+            variants={wireFrameAnimation}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 3 }}
+          />
+        </pattern>
+      </defs>
+      
+      {/* Apply the pattern as a fill */}
+      <motion.rect
+        x="0" y="0" width="100%" height="100%"
+        fill="url(#wireframe-pattern)"
+        variants={wireFrameGrid}
+        initial="initial"
+        animate="animate"
+      />
+    </svg>
+
+    {/* Additional floating rectangular wire frames */}
+    {[...Array(5)].map((_, i) => (
+      <motion.div
+        key={`wire-rect-${i}`}
+        className="absolute border-2"
+        style={{
+          borderColor: PRIMARY_COLOR,
+          borderStyle: "dashed",
+          opacity: 0.15,
+          width: `${150 + i * 50}px`,
+          height: `${100 + i * 40}px`,
+          left: `${Math.random() * 80}%`,
+          top: `${Math.random() * 80}%`,
+          borderRadius: i % 2 === 0 ? "0px" : "8px",
+        }}
+        animate={{
+          rotate: [0, 360],
+          scale: [1, 1.2, 1],
+          opacity: [0.1, 0.2, 0.1],
+          x: [0, 30, 0],
+          y: [0, -30, 0],
+        }}
+        transition={{
+          duration: 15 + i * 2,
+          repeat: Infinity,
+          ease: "linear",
+          delay: i * 2,
+        }}
+      />
+    ))}
 
     {/* Floating particles with #0069B4 */}
     {[...Array(8)].map((_, i) => (
