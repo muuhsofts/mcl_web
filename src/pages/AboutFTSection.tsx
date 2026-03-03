@@ -27,6 +27,8 @@ import {
   PlayCircleIcon,
   PauseCircleIcon,
   SpeakerWaveIcon,
+  MagnifyingGlassIcon,
+  ArrowsPointingOutIcon,
 } from "@heroicons/react/24/outline";
 import CountUp from "react-countup";
 import axiosInstance from "../axios";
@@ -104,14 +106,12 @@ interface ValueData {
 }
 
 /* ────────────────────── UNIFIED BACKGROUND MOTION SYSTEM WITH #0069B4 ────────────────────── */
-// Global page transition variants
 const pageTransition: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.6 } },
   exit: { opacity: 0, transition: { duration: 0.4 } }
 };
 
-// Master background animation with #0069B4 color
 const backgroundFlow: Variants = {
   initial: { 
     backgroundPosition: "0% 0%",
@@ -129,7 +129,6 @@ const backgroundFlow: Variants = {
   }
 };
 
-// Secondary ambient animation with #0069B4
 const ambientPulse: Variants = {
   initial: { scale: 1, opacity: 0.2 },
   animate: { 
@@ -141,39 +140,6 @@ const ambientPulse: Variants = {
       ease: "easeInOut"
     }
   }
-};
-
-// Original animation variants for content
-const lineVariants: Variants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut" } },
-};
-
-const wordVariants: Variants = {
-  hidden: { opacity: 0, x: -30 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-  },
-};
-
-const bounceVariants: Variants = {
-  hidden: { opacity: 0, x: -50, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    x: [-50, 20, -10, 5, 0],
-    scale: [0.95, 1.05, 0.98, 1.02, 1],
-    transition: {
-      x: { duration: 0.8, times: [0, 0.3, 0.5, 0.7, 1], ease: "easeOut" },
-      scale: { duration: 0.8, times: [0, 0.3, 0.5, 0.7, 1], ease: "easeOut" },
-      opacity: { duration: 0.6 },
-    },
-  },
 };
 
 const fadeInUp: Variants = {
@@ -221,108 +187,9 @@ const slideUpBounce: Variants = {
   }
 };
 
-const staggerScale: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2
-    }
-  }
-};
-
-/* ────────────────────── REUSABLE COMPONENTS ────────────────────── */
-const AnimatedText: React.FC<{
-  text: string;
-  className?: string;
-  variants?: Variants;
-  perWord?: boolean;
-  as?: ElementType;
-}> = ({ text, className, variants, perWord = true, as: Component = "div" }) => {
-  const Motion = motion(Component as ComponentType<any> | keyof JSX.IntrinsicElements);
-  if (!perWord) {
-    return (
-      <Motion
-        variants={variants || containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
-        className={className}
-      >
-        {text}
-      </Motion>
-    );
-  }
-  const words = text.split(/\s+/).filter((w) => w);
-  return (
-    <Motion
-      variants={variants || containerVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.3 }}
-      className={`flex flex-wrap ${className}`}
-    >
-      {words.map((w, i) => (
-        <motion.span
-          key={`w-${i}`}
-          variants={wordVariants}
-          className="inline-block mr-2 whitespace-nowrap"
-        >
-          {w}
-        </motion.span>
-      ))}
-    </Motion>
-  );
-};
-
-const SectionBadge: React.FC<{ text: string; icon?: React.ReactNode }> = ({ text, icon }) => (
-  <motion.div
-    variants={fadeInUp}
-    whileHover={{ scale: 1.05 }}
-    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#0069B4]/10 to-[#ed1c24]/10 rounded-full mb-4 border border-[#0069B4]/20"
-  >
-    {icon || <SparklesIcon className="w-4 h-4 text-[#0069B4] mr-2" />}
-    <span className="text-sm font-semibold text-[#0069B4] tracking-wide">{text}</span>
-  </motion.div>
-);
-
-const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
-  <motion.div 
-    variants={fadeInUp} 
-    className="text-center mb-12"
-    whileInView="visible"
-    initial="hidden"
-    viewport={{ once: true, amount: 0.3 }}
-  >
-    <motion.h2 
-      className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 relative inline-block"
-      whileHover={{ scale: 1.02 }}
-    >
-      {title}
-    </motion.h2>
-    {subtitle && (
-      <motion.p 
-        className="text-lg text-gray-600 max-w-2xl mx-auto"
-        variants={fadeInUp}
-      >
-        {subtitle}
-      </motion.p>
-    )}
-    <motion.div
-      className="mt-4 h-1 w-20 bg-gradient-to-r from-[#0069B4] to-[#ed1c24] rounded-full mx-auto"
-      initial={{ width: 0, opacity: 0 }}
-      whileInView={{ width: 80, opacity: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: 0.2 }}
-    />
-  </motion.div>
-);
-
 /* ────────────────────── BACKGROUND WRAPPER WITH #0069B4 ────────────────────── */
 const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
   <div className={`relative overflow-hidden ${className}`}>
-    {/* Base gradient layer with #0069B4 */}
     <motion.div
       className="absolute inset-0 bg-gradient-to-br from-[#0069B4]/5 via-white to-red-50"
       variants={backgroundFlow}
@@ -333,7 +200,6 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
       }}
     />
     
-    {/* Ambient pulse layer with #0069B4 */}
     <motion.div
       className="absolute inset-0"
       variants={ambientPulse}
@@ -344,7 +210,6 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
       }}
     />
     
-    {/* Dynamic grid overlay with #0069B4 */}
     <motion.div
       className="absolute inset-0 opacity-5"
       animate={{ 
@@ -357,7 +222,6 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
       }}
     />
     
-    {/* Floating particles with #0069B4 */}
     {[...Array(5)].map((_, i) => (
       <motion.div
         key={i}
@@ -381,18 +245,17 @@ const AnimatedBackground: React.FC<{ children: React.ReactNode; className?: stri
       />
     ))}
     
-    {/* Content */}
     <div className="relative z-10">
       {children}
     </div>
   </div>
 );
 
-/* ────────────────────── ORIGINAL LOADER ────────────────────── */
+/* ────────────────────── LOADER ────────────────────── */
 const LandingLoader: React.FC = () => (
   <motion.div
     initial={{ opacity: 1 }}
-    exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
+    exit={{ opacity: 0, transition: { duration: 0.5 } }}
     className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0069B4] to-[#0069B4]/80 z-50"
   >
     <motion.div 
@@ -403,11 +266,18 @@ const LandingLoader: React.FC = () => (
     >
       <ArrowPathIcon className="w-16 h-16 text-white animate-spin" />
     </motion.div>
-    <AnimatedText text="Loading Our Story..." className="text-2xl font-bold text-white tracking-wide font-inter" />
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.4 }}
+      className="text-2xl font-bold text-white tracking-wide mt-4"
+    >
+      Loading Our Story...
+    </motion.div>
   </motion.div>
 );
 
-/* ────────────────────── REFINED HERO SECTION WITH MINIMIZED HEIGHT ────────────────────── */
+/* ────────────────────── HERO SECTION ────────────────────── */
 const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -438,7 +308,6 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Animated overlay with #0069B4 */}
       <motion.div
         className="absolute inset-0"
         variants={backgroundFlow}
@@ -461,9 +330,9 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
           >
             <motion.h1 
               className="text-4xl md:text-5xl font-bold text-white mb-3 leading-tight"
-              variants={bounceVariants}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
             >
               {slide.heading || "Shaping Tanzania's Media Landscape"}
             </motion.h1>
@@ -517,7 +386,6 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
         </div>
       </div>
 
-      {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -528,7 +396,6 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
           className="flex flex-col items-center gap-1 cursor-pointer"
-          whileHover={{ scale: 1.1 }}
         >
           <span className="text-white/60 text-xs font-medium">Scroll</span>
           <ChevronDownIcon className="w-4 h-4 text-white/60" />
@@ -538,7 +405,7 @@ const HeroSection: React.FC<{ data: AboutSliderData[] }> = ({ data }) => {
   );
 };
 
-/* ────────────────────── ENHANCED ABOUT SECTION WITH TALLER VIDEO ────────────────────── */
+/* ────────────────────── ABOUT SECTION ────────────────────── */
 const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ content }) => {
   const [isVideoHovered, setIsVideoHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -549,7 +416,8 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
   const paragraphs = content.description
     .split(/\n\s*\n/)
     .map(cleanForSEO)
-    .filter(p => p.trim());
+    .filter(p => p.trim())
+    .slice(0, 2);
 
   const togglePlay = () => {
     if (iframeRef.current) {
@@ -560,7 +428,7 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
   return (
     <AnimatedBackground>
       <motion.section 
-        className="py-20 relative"
+        className="py-16 relative"
         variants={pageTransition}
         initial="initial"
         whileInView="animate"
@@ -571,25 +439,27 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
             variants={staggerContainer}
             className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start"
           >
-            <motion.div variants={fadeInLeft} className="space-y-6">
-              <SectionBadge text="Who We Are" icon={<PlayCircleIcon className="w-4 h-4 text-[#0069B4] mr-2" />} />
+            <motion.div variants={fadeInLeft} className="space-y-4">
+              <motion.span 
+                variants={fadeInUp}
+                className="inline-block px-3 py-1 bg-[#0069B4]/10 rounded-full text-xs font-semibold text-[#0069B4]"
+              >
+                Who We Are
+              </motion.span>
               
               <motion.h2 
-                className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
-                whileHover={{ x: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
+                className="text-3xl md:text-4xl font-bold text-gray-900"
+                variants={fadeInUp}
               >
                 {content.category}
               </motion.h2>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {paragraphs.map((p, i) => (
                   <motion.p
                     key={i}
                     variants={fadeInUp}
-                    className="text-base text-gray-600 leading-relaxed"
-                    whileHover={{ x: 5, color: "#0069B4" }}
-                    transition={{ type: "spring", stiffness: 300 }}
+                    className="text-sm text-gray-600 leading-relaxed"
                   >
                     {p}
                   </motion.p>
@@ -600,12 +470,11 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
             {content.video_link && (
               <motion.div 
                 variants={fadeInRight} 
-                className="relative h-full flex items-start"
+                className="relative"
                 onHoverStart={() => setIsVideoHovered(true)}
                 onHoverEnd={() => setIsVideoHovered(false)}
               >
-                <div className="relative group w-full">
-                  {/* Animated rings with #0069B4 */}
+                <div className="relative group">
                   <motion.div
                     className="absolute -inset-4 bg-gradient-to-r from-[#0069B4]/20 to-[#ed1c24]/20 rounded-3xl blur-2xl"
                     animate={{ 
@@ -615,13 +484,7 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
                     transition={{ duration: 0.3 }}
                   />
                   
-                  <motion.div
-                    className="absolute -inset-2 border-2 border-dashed border-[#0069B4]/30 rounded-2xl"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                  />
-                  
-                  <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black aspect-[3/4] max-h-[500px] w-full">
+                  <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black aspect-video">
                     <iframe
                       ref={iframeRef}
                       src={`${content.video_link}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0`}
@@ -632,7 +495,6 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
                       className="w-full h-full"
                     />
                     
-                    {/* Video overlay */}
                     <motion.div 
                       className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"
                       initial={{ opacity: 0 }}
@@ -645,7 +507,6 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
                             className="flex items-center gap-2"
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: isVideoHovered ? 1 : 0 }}
-                            transition={{ delay: 0.1 }}
                           >
                             <motion.button
                               onClick={togglePlay}
@@ -660,10 +521,7 @@ const AboutSection: React.FC<{ content: MwananchiAboutData | null }> = ({ conten
                               )}
                             </motion.button>
                             
-                            <motion.span 
-                              className="text-white text-xs font-medium"
-                              whileHover={{ x: 5 }}
-                            >
+                            <motion.span className="text-white text-xs font-medium">
                               Watch
                             </motion.span>
                           </motion.div>
@@ -701,16 +559,21 @@ const VisionMissionSection: React.FC = () => {
   return (
     <AnimatedBackground>
       <motion.section 
-        className="py-20 relative"
+        className="py-16 relative"
         variants={pageTransition}
         initial="initial"
         whileInView="animate"
         viewport={{ once: true, amount: 0.1 }}
       >
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader title="Our Vision & Mission" />
+          <motion.h2 
+            variants={fadeInUp}
+            className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10"
+          >
+            Our Vision & Mission
+          </motion.h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {items.map((item, idx) => (
               <motion.div
                 key={item.title}
@@ -722,15 +585,13 @@ const VisionMissionSection: React.FC = () => {
                 whileHover={{ y: -8 }}
                 className="group relative"
               >
-                <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200 hover:border-[#0069B4]/30 transition-all duration-300 overflow-hidden">
+                <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200">
                   <motion.div
                     className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-5`}
                     initial={{ scale: 0 }}
                     whileHover={{ scale: 1 }}
                     transition={{ duration: 0.4 }}
                   />
-                  
-                  <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${item.color} rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity duration-300`} />
                   
                   <div className="flex items-center gap-4 mb-4">
                     <motion.div 
@@ -743,7 +604,7 @@ const VisionMissionSection: React.FC = () => {
                     <h3 className="text-2xl font-bold text-gray-900">{item.title}</h3>
                   </div>
                   
-                  <p className="text-gray-600 mb-6 leading-relaxed">
+                  <p className="text-gray-600 leading-relaxed">
                     {item.description}
                   </p>
                 </div>
@@ -763,26 +624,33 @@ const ValuesSection: React.FC<{ values: ValueData[]; onCardClick: (v: ValueData)
     return icons[index % icons.length];
   };
 
+  const displayValues = values.slice(0, 4);
+
   return (
     <AnimatedBackground>
       <motion.section 
-        className="py-20 relative"
+        className="py-16 relative"
         variants={pageTransition}
         initial="initial"
         whileInView="animate"
         viewport={{ once: true, amount: 0.1 }}
       >
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader title="Our Core Values" subtitle="The principles that guide everything we do" />
+          <motion.h2 
+            variants={fadeInUp}
+            className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10"
+          >
+            Our Core Values
+          </motion.h2>
           
           <motion.div
-            variants={staggerScale}
+            variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mt-12"
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
           >
-            {values.map((value, idx) => {
+            {displayValues.map((value, idx) => {
               const Icon = getIcon(idx);
               
               return (
@@ -790,51 +658,266 @@ const ValuesSection: React.FC<{ values: ValueData[]; onCardClick: (v: ValueData)
                   key={value.value_id}
                   variants={scaleIn}
                   onClick={() => onCardClick(value)}
-                  whileHover={{ y: -6 }}
+                  whileHover={{ y: -4 }}
                   whileTap={{ scale: 0.98 }}
                   className="group relative text-left"
                 >
-                  <div className="relative bg-white/90 backdrop-blur-sm p-6 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all duration-300 shadow-sm hover:shadow-xl overflow-hidden">
+                  <div className="relative bg-white/90 backdrop-blur-sm p-5 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all shadow-sm hover:shadow-lg">
                     <motion.div 
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-gradient-to-r from-[#0069B4] to-[#ed1c24] rounded-full"
-                      initial={{ opacity: 0, width: 0 }}
-                      whileHover={{ opacity: 1, width: 48 }}
-                      transition={{ duration: 0.3 }}
-                    />
+                      className="w-10 h-10 mb-3 rounded-lg bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                    >
+                      <Icon className="w-5 h-5 text-[#0069B4] group-hover:text-[#ed1c24] transition-colors" />
+                    </motion.div>
                     
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-br from-[#0069B4]/5 to-[#ed1c24]/5"
-                      initial={{ scale: 0, opacity: 0 }}
-                      whileHover={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    />
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 group-hover:text-[#0069B4] transition-colors">
+                      {value.category}
+                    </h3>
                     
-                    <div className="relative z-10">
-                      <motion.div 
-                        className="w-12 h-12 mb-4 rounded-lg bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center border border-gray-200"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ type: "spring", stiffness: 400 }}
-                      >
-                        <Icon className="w-6 h-6 text-[#0069B4] group-hover:text-[#ed1c24] transition-colors duration-300" />
-                      </motion.div>
-                      
-                      <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-[#0069B4] transition-colors duration-300">
-                        {value.category}
-                      </h3>
-                      
-                      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                        {value.description ? value.description.substring(0, 60) + "..." : "Click to learn more"}
-                      </p>
-                    </div>
-                    
-                    <motion.div
-                      initial={{ scaleX: 0 }}
-                      whileHover={{ scaleX: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#0069B4] to-[#ed1c24] origin-left"
-                    />
+                    <p className="text-xs text-gray-500 line-clamp-2">
+                      {value.description ? value.description.substring(0, 50) + "..." : "Click to learn more"}
+                    </p>
                   </div>
                 </motion.button>
+              );
+            })}
+          </motion.div>
+        </div>
+      </motion.section>
+    </AnimatedBackground>
+  );
+};
+
+/* ────────────────────── REACH SECTION ────────────────────── */
+const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscriptions }) => {
+  const displaySubs = subscriptions.slice(0, 5);
+
+  if (!displaySubs.length) return null;
+
+  return (
+    <AnimatedBackground>
+      <motion.section 
+        className="py-16 relative"
+        variants={pageTransition}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true, amount: 0.1 }}
+      >
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.h2 
+            variants={fadeInUp}
+            className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10"
+          >
+            Our Reach
+          </motion.h2>
+          
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-2 md:grid-cols-5 gap-4"
+          >
+            {displaySubs.map((sub, idx) => (
+              <motion.div
+                key={sub.subscription_id}
+                variants={scaleIn}
+                whileHover={{ y: -4 }}
+                className="group relative"
+              >
+                <div className="relative bg-white/90 backdrop-blur-sm p-4 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all shadow-sm hover:shadow-lg text-center">
+                  <motion.div 
+                    className="w-14 h-14 mx-auto mb-2 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-2"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                  >
+                    <img
+                      src={buildImageUrl(sub.logo_img_file) || "https://via.placeholder.com/56x56"}
+                      alt={sub.category}
+                      className="w-full h-full object-contain"
+                    />
+                  </motion.div>
+                  
+                  <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-1">
+                    {sub.category}
+                  </h3>
+                  
+                  <div className="text-lg font-bold text-[#0069B4]">
+                    <CountUp
+                      end={sub.total_viewers}
+                      duration={2}
+                      formattingFn={(v) => 
+                        new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v)
+                      }
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">monthly</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </motion.section>
+    </AnimatedBackground>
+  );
+};
+
+/* ────────────────────── IMAGE MODAL FOR DISCOVER CARDS ────────────────────── */
+const ImageModal: React.FC<{ imageUrl: string; title: string; onClose: () => void }> = ({ imageUrl, title, onClose }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50"
+    onClick={onClose}
+  >
+    <motion.div
+      initial={{ scale: 0.9 }}
+      animate={{ scale: 1 }}
+      exit={{ scale: 0.9 }}
+      className="relative max-w-5xl w-full max-h-[90vh]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={onClose}
+        className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
+      >
+        <XMarkIcon className="w-8 h-8" />
+      </button>
+      <img
+        src={imageUrl}
+        alt={title}
+        className="w-full h-full object-contain"
+      />
+    </motion.div>
+  </motion.div>
+);
+
+/* ────────────────────── DISCOVER CARDS WITH FULL IMAGE VIEW ────────────────────── */
+const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
+  const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
+  
+  const getIcon = (type: string) => {
+    switch(type) {
+      case "Brand": return BuildingOfficeIcon;
+      case "News": return NewspaperIcon;
+      case "Events": return CalendarIcon;
+      default: return InformationCircleIcon;
+    }
+  };
+
+  const displayCards = cards.slice(0, 3);
+
+  if (!displayCards.length) return null;
+
+  return (
+    <AnimatedBackground>
+      <AnimatePresence>
+        {selectedImage && (
+          <ImageModal
+            imageUrl={selectedImage.url}
+            title={selectedImage.title}
+            onClose={() => setSelectedImage(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.section 
+        className="py-16 relative"
+        variants={pageTransition}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true, amount: 0.1 }}
+      >
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.h2 
+            variants={fadeInUp}
+            className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-10"
+          >
+            Discover More
+          </motion.h2>
+          
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
+            {displayCards.map((card, idx) => {
+              const Icon = getIcon(card.type);
+              const imageUrl = buildImageUrl(card.imageUrl) || "https://via.placeholder.com/600x400";
+              
+              return (
+                <motion.div
+                  key={`${card.type}-${card.id}`}
+                  variants={slideUpBounce}
+                  whileHover={{ y: -8 }}
+                  className="group relative"
+                >
+                  <div className="relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all border border-gray-200">
+                    {/* Image Container - Full width and properly sized */}
+                    <div className="relative h-64 w-full overflow-hidden bg-gray-100">
+                      <motion.img
+                        src={imageUrl}
+                        alt={card.title}
+                        className="w-full h-full object-cover cursor-pointer"
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ duration: 0.6 }}
+                        onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
+                      />
+                      
+                      {/* Image overlay with view fullscreen button */}
+                      <motion.div 
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
+                        initial={false}
+                      >
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
+                          className="bg-white/20 backdrop-blur-md rounded-full p-3 border border-white/30"
+                        >
+                          <ArrowsPointingOutIcon className="w-6 h-6 text-white" />
+                        </motion.button>
+                      </motion.div>
+                      
+                      {/* Type badge */}
+                      <div className="absolute top-3 left-3">
+                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 bg-white/90 backdrop-blur-sm border ${
+                          card.type === "Brand" ? "text-[#0069B4] border-[#0069B4]/20" :
+                          card.type === "News" ? "text-[#ed1c24] border-[#ed1c24]/20" :
+                          "text-purple-600 border-purple-200"
+                        }`}>
+                          <Icon className="w-3 h-3" />
+                          <span>{card.type}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-5">
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
+                        {card.title}
+                      </h3>
+                      
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+                        {card.description.length > 100 ? `${card.description.slice(0, 100)}...` : card.description}
+                      </p>
+                      
+                      <motion.div
+                        whileHover={{ x: 5 }}
+                      >
+                        <Link
+                          to={card.linkUrl}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-[#0069B4] hover:text-[#ed1c24] transition-colors"
+                        >
+                          <span>Learn More</span>
+                          <ArrowRightIcon className="w-3 h-3" />
+                        </Link>
+                      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
               );
             })}
           </motion.div>
@@ -854,9 +937,9 @@ const ValueModal: React.FC<{ value: ValueData; onClose: () => void }> = ({ value
     onClick={onClose}
   >
     <motion.div
-      initial={{ scale: 0.9, y: 30, rotateX: -15 }}
-      animate={{ scale: 1, y: 0, rotateX: 0 }}
-      exit={{ scale: 0.9, y: -30, rotateX: 15 }}
+      initial={{ scale: 0.9, y: 30 }}
+      animate={{ scale: 1, y: 0 }}
+      exit={{ scale: 0.9, y: -30 }}
       transition={{ type: "spring", damping: 25 }}
       className="relative bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl border border-gray-200"
       onClick={(e) => e.stopPropagation()}
@@ -875,7 +958,7 @@ const ValueModal: React.FC<{ value: ValueData; onClose: () => void }> = ({ value
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-          className="w-20 h-20 mx-auto mb-4 rounded-xl bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center border border-gray-200"
+          className="w-20 h-20 mx-auto mb-4 rounded-xl bg-gradient-to-br from-[#0069B4]/10 to-[#ed1c24]/10 flex items-center justify-center"
         >
           <img
             src={buildImageUrl(value.img_file) || "https://via.placeholder.com/80x80"}
@@ -884,270 +967,17 @@ const ValueModal: React.FC<{ value: ValueData; onClose: () => void }> = ({ value
           />
         </motion.div>
 
-        <motion.h3 
-          className="text-2xl font-bold text-gray-900 mb-3"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <h3 className="text-2xl font-bold text-gray-900 mb-3">
           {value.category}
-        </motion.h3>
+        </h3>
         
-        <motion.p 
-          className="text-gray-600 text-sm leading-relaxed"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
+        <p className="text-gray-600 text-sm leading-relaxed">
           {value.description || "No description available."}
-        </motion.p>
-
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.4 }}
-          className="h-0.5 w-16 bg-gradient-to-r from-[#0069B4] to-[#ed1c24] rounded-full mx-auto mt-6"
-        />
+        </p>
       </div>
     </motion.div>
   </motion.div>
 );
-
-/* ────────────────────── REACH SECTION ────────────────────── */
-const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscriptions }) => {
-  if (!subscriptions.length) return null;
-
-  return (
-    <AnimatedBackground>
-      <motion.section 
-        className="py-20 relative"
-        variants={pageTransition}
-        initial="initial"
-        whileInView="animate"
-        viewport={{ once: true, amount: 0.1 }}
-      >
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader title="Our Reach" subtitle="Making an impact across Tanzania and beyond" />
-          
-          <motion.div
-            variants={staggerScale}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mt-12"
-          >
-            {subscriptions.map((sub, idx) => (
-              <motion.div
-                key={sub.subscription_id}
-                variants={scaleIn}
-                whileHover={{ y: -6 }}
-                whileTap={{ scale: 0.98 }}
-                className="group relative"
-              >
-                <div className="relative bg-white/90 backdrop-blur-sm p-5 rounded-xl border border-gray-200 hover:border-[#0069B4] transition-all duration-300 shadow-sm hover:shadow-xl text-center overflow-hidden">
-                  <motion.div 
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-[#0069B4] to-[#ed1c24] rounded-full"
-                    initial={{ opacity: 0, width: 0 }}
-                    whileHover={{ opacity: 1, width: 32 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                  
-                  <motion.div 
-                    className="w-16 h-16 mx-auto mb-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-2 border border-gray-100"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 400 }}
-                  >
-                    <img
-                      src={buildImageUrl(sub.logo_img_file) || "https://via.placeholder.com/64x48"}
-                      alt={sub.category}
-                      className="w-full h-full object-contain"
-                    />
-                  </motion.div>
-                  
-                  <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-[#0069B4] transition-colors duration-300">
-                    {sub.category}
-                  </h3>
-                  
-                  <motion.div 
-                    className="text-lg font-black text-[#0069B4] group-hover:text-[#ed1c24] transition-colors duration-300"
-                    whileHover={{ scale: 1.1 }}
-                  >
-                    <CountUp
-                      end={sub.total_viewers}
-                      duration={2}
-                      formattingFn={(v) => 
-                        new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v)
-                      }
-                    />
-                  </motion.div>
-                  <p className="text-xs text-gray-500">monthly reach</p>
-                  
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    whileHover={{ scaleX: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#0069B4] to-[#ed1c24] origin-left"
-                  />
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.section>
-    </AnimatedBackground>
-  );
-};
-
-/* ────────────────────── DISCOVER CARDS ────────────────────── */
-const DiscoverCards: React.FC<{ cards: AboutCardData[] }> = ({ cards }) => {
-  const getIcon = (type: string) => {
-    switch(type) {
-      case "Brand": return BuildingOfficeIcon;
-      case "News": return NewspaperIcon;
-      case "Events": return CalendarIcon;
-      default: return InformationCircleIcon;
-    }
-  };
-
-  const getColor = (type: string) => {
-    switch(type) {
-      case "Brand": return "text-[#0069B4] bg-[#0069B4]/10 border-[#0069B4]/20";
-      case "News": return "text-[#ed1c24] bg-[#ed1c24]/10 border-[#ed1c24]/20";
-      case "Events": return "text-purple-600 bg-purple-100 border-purple-200";
-      default: return "text-gray-600 bg-gray-100 border-gray-200";
-    }
-  };
-
-  if (!cards.length) {
-    return (
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring" }}
-          >
-            <InformationCircleIcon className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-          </motion.div>
-          <p className="text-base text-gray-600">No content available at this time.</p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <AnimatedBackground>
-      <motion.section 
-        className="py-20 relative"
-        variants={pageTransition}
-        initial="initial"
-        whileInView="animate"
-        viewport={{ once: true, amount: 0.1 }}
-      >
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader title="Discover More" subtitle="Explore our latest updates and offerings" />
-          
-          <motion.div
-            variants={staggerScale}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12"
-          >
-            {cards.map((card, idx) => {
-              const Icon = getIcon(card.type);
-              const colorClass = getColor(card.type);
-              
-              return (
-                <motion.div
-                  key={`${card.type}-${card.id}`}
-                  variants={slideUpBounce}
-                  whileHover={{ y: -8 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="group relative"
-                >
-                  <div className="relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border border-gray-200 hover:border-[#0069B4]/30">
-                    <motion.div 
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-gradient-to-r from-[#0069B4] to-[#ed1c24] rounded-full z-20"
-                      initial={{ opacity: 0, width: 0 }}
-                      whileHover={{ opacity: 1, width: 48 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                    
-                    <div className="relative h-52 w-full overflow-hidden">
-                      <motion.img
-                        src={buildImageUrl(card.imageUrl) || "https://via.placeholder.com/600x400"}
-                        alt={card.title}
-                        className="w-full h-full object-cover"
-                        whileHover={{ scale: 1.15 }}
-                        transition={{ duration: 0.6 }}
-                      />
-                      <motion.div 
-                        className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"
-                        initial={{ opacity: 0.6 }}
-                        whileHover={{ opacity: 0.8 }}
-                      />
-                      
-                      <motion.div 
-                        className="absolute top-3 left-3 z-10"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 border backdrop-blur-sm ${colorClass}`}>
-                          <Icon className="w-3 h-3" />
-                          <span>{card.type}</span>
-                        </div>
-                      </motion.div>
-                      
-                      <motion.div 
-                        className="absolute bottom-3 left-3 right-3 z-10"
-                        initial={{ y: 0 }}
-                        whileHover={{ y: -5 }}
-                      >
-                        <h3 className="text-lg font-bold text-white line-clamp-2 drop-shadow-lg">
-                          {card.title}
-                        </h3>
-                      </motion.div>
-                    </div>
-                    
-                    <div className="p-5">
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
-                        {card.description.length > 120 ? `${card.description.slice(0, 120)}...` : card.description}
-                      </p>
-                      
-                      <motion.div
-                        whileHover={{ x: 5 }}
-                      >
-                        <Link
-                          to={card.linkUrl}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-[#0069B4] group-hover:text-[#ed1c24] transition-colors duration-300"
-                        >
-                          <span>Learn More</span>
-                          <motion.div
-                            animate={{ x: [0, 5, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          >
-                            <ArrowRightIcon className="w-3 h-3" />
-                          </motion.div>
-                        </Link>
-                      </motion.div>
-                    </div>
-                    
-                    <motion.div
-                      initial={{ scaleX: 0 }}
-                      whileHover={{ scaleX: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#0069B4] to-[#ed1c24] origin-left"
-                    />
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </motion.section>
-    </AnimatedBackground>
-  );
-};
 
 /* ────────────────────── MAIN PAGE ────────────────────── */
 const AboutFTSection: React.FC = () => {
@@ -1171,7 +1001,7 @@ const AboutFTSection: React.FC = () => {
         axiosInstance.get("/api/latestEvent"),
       ]);
 
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise(r => setTimeout(r, 800));
 
       if (hero.status === "fulfilled") setSliderData(hero.value.data ?? []);
       if (subs.status === "fulfilled") setSubscriptions(subs.value.data?.data ?? []);
