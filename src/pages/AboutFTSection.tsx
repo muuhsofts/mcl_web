@@ -919,7 +919,7 @@ const ReachSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({ subscri
                       }
                     />
                   </div>
-                  <p className="text-xs text-gray-500">monthly</p>
+                  <p className="text-xs text-gray-500"></p>
 
                   <motion.div
                     className="absolute bottom-0 left-0 right-0 h-px origin-left"
