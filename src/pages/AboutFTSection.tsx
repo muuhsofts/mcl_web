@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,21 +15,50 @@ import {
   HeartIcon,
   LightBulbIcon,
   UsersIcon,
-  PlayCircleIcon,
-  PauseCircleIcon,
-  ArrowsPointingOutIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import CountUp from "react-countup";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
-import { useEffect, useState, useRef, memo } from "react";
+import { useEffect, useState, useRef, memo, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet";
 
-/* ────────────────────── CONSTANTS ────────────────────── */
-const PRIMARY_COLOR = "#0069B4";
-const SECONDARY_COLOR = "#FF3520";
+/* ────────────────────── COMPANY COLORS ────────────────────── */
+const COLORS = {
+  primary: {
+    base: "#0069B4",
+    dark1: "#005A9B",
+    dark2: "#004C82",
+    dark3: "#003E69",
+    light1: "#3388C3",
+    light2: "#66A6D2",
+    light3: "#99C4E1",
+    light4: "#CCE1F0",
+  },
+  accent: {
+    base: "#FF3520",
+    dark1: "#E62F1C",
+    dark2: "#CC2A19",
+    dark3: "#B32416",
+    light1: "#FF5D4D",
+    light2: "#FF8679",
+    light3: "#FFAEA6",
+    light4: "#FFD7D2",
+  },
+  white: {
+    base: "#FFFFFF",
+    light1: "#F9F9F9",
+    light2: "#F2F2F2",
+    light3: "#E6E6E6",
+    light4: "#CCCCCC",
+  },
+  // New color for Vision, Values, Reach sections
+  lightGray: "#f5f0f0",
+};
+
 const API_BASE_URL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
+const LOADING_DELAY = 300;
+const SLIDE_INTERVAL = 5000;
 
 /* ────────────────────── TYPES ────────────────────── */
 interface AboutSliderData {
@@ -71,10 +100,8 @@ interface ValueData {
 
 /* ────────────────────── UTILITIES ────────────────────── */
 const stripHtml = (html: string): string => {
-  const txt = html.replace(/<[^>]+>/g, "");
-  const el = document.createElement("textarea");
-  el.innerHTML = txt;
-  return el.value;
+  if (!html) return "";
+  return html.replace(/<[^>]+>/g, "").trim();
 };
 
 const cleanForSEO = (text: string): string => {
@@ -87,16 +114,177 @@ const buildImageUrl = (path: string | null | undefined): string | null => {
   return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 };
 
-/* ────────────────────── ANIMATION VARIANTS ────────────────────── */
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+const truncateText = (text: string, maxLength: number): string => {
+  if (!text || text.length <= maxLength) return text;
+  return `${text.substring(0, maxLength)}...`;
 };
 
-const fadeInScale = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } }
+/* ────────────────────── ANIMATION VARIANTS ────────────────────── */
+const fadeIn: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.4 } }
 };
+
+const slideInLeft: Variants = {
+  hidden: { opacity: 0, x: -30 },
+  visible: { 
+    opacity: 1, 
+    x: 0, 
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
+  }
+};
+
+const slideInRight: Variants = {
+  hidden: { opacity: 0, x: 30 },
+  visible: { 
+    opacity: 1, 
+    x: 0, 
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
+  }
+};
+
+const slideInUp: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
+  }
+};
+
+const slideInDown: Variants = {
+  hidden: { opacity: 0, y: -30 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
+  }
+};
+
+const scaleIn: Variants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { 
+    opacity: 1, 
+    scale: 1, 
+    transition: { type: "spring", stiffness: 200, damping: 25, duration: 0.4 } 
+  }
+};
+
+const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+  }
+};
+
+const cardHover = {
+  rest: { scale: 1 },
+  hover: { scale: 1.03, transition: { duration: 0.2 } }
+};
+
+const floatAnimation: Variants = {
+  animate: {
+    y: [0, -5, 0],
+    transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+  }
+};
+
+/* ────────────────────── SECTION COLOR CONFIG ────────────────────── */
+const sectionColors = {
+  hero: {
+    primary: COLORS.primary.base,
+    secondary: COLORS.accent.base,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
+    light: COLORS.primary.light4,
+    overlay: 'rgba(0,0,0,0.2)',
+  },
+  about: {
+    primary: COLORS.primary.base,
+    secondary: COLORS.accent.light1,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.light2} 0%, ${COLORS.accent.light2} 100%)`,
+    light: COLORS.primary.light4,
+    background: COLORS.white.light2,
+  },
+  vision: {
+    primary: COLORS.primary.base, // Changed to blue
+    secondary: COLORS.accent.base,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
+    light: COLORS.primary.light4,
+    background: COLORS.lightGray, // #f5f0f0
+  },
+  values: {
+    primary: COLORS.primary.base, // Changed to blue
+    secondary: COLORS.accent.base,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
+    light: COLORS.primary.light4,
+    background: COLORS.lightGray, // #f5f0f0
+  },
+  reach: {
+    primary: COLORS.primary.base, // Changed to blue
+    secondary: COLORS.accent.base,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
+    light: COLORS.primary.light4,
+    background: COLORS.lightGray, // #f5f0f0
+  },
+  discover: {
+    primary: COLORS.primary.base,
+    secondary: COLORS.accent.base,
+    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
+    light: COLORS.primary.light4,
+    background: COLORS.white.light3,
+  },
+};
+
+/* ────────────────────── OPTIMIZED BACKGROUND GRID ────────────────────── */
+const ModernBackgroundGrid = memo(({ color = COLORS.primary.base, variant = 'default' }: { color?: string; variant?: string }) => {
+  const getOpacity = () => {
+    switch(variant) {
+      case 'light': return '08';
+      case 'medium': return '12';
+      default: return '05';
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none will-change-transform">
+      {/* Base gradient with section-specific color */}
+      <div 
+        className="absolute inset-0"
+        style={{ 
+          background: `radial-gradient(circle at 20% 50%, ${color}${getOpacity()} 0%, transparent 70%)` 
+        }}
+      />
+      
+      {/* Grid pattern with section color */}
+      <div 
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, ${color}15 1px, transparent 1px),
+            linear-gradient(to bottom, ${color}15 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+        }}
+      />
+      
+      {/* Floating orb with section color */}
+      <motion.div
+        animate={{ 
+          y: [0, -15, 0],
+          opacity: [0.1, 0.15, 0.1]
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-20 right-20 w-96 h-96 rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${color}20 0%, transparent 70%)`,
+        }}
+      />
+    </div>
+  );
+});
+
+ModernBackgroundGrid.displayName = 'ModernBackgroundGrid';
 
 /* ────────────────────── LOADER ────────────────────── */
 const LandingLoader = memo(() => (
@@ -104,15 +292,19 @@ const LandingLoader = memo(() => (
     initial={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     className="fixed inset-0 flex items-center justify-center z-50"
-    style={{ backgroundColor: PRIMARY_COLOR }}
+    style={{ backgroundColor: COLORS.primary.base }} // Changed to #0069B4
   >
-    <div className="text-center">
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12 border-3 border-white/30 border-t-white rounded-full mx-auto"
+    <div className="relative z-10 text-center">
+      <div 
+        className="w-12 h-12 border-3 rounded-full mx-auto animate-spin"
+        style={{ 
+          borderColor: `${COLORS.white.base}30`,
+          borderTopColor: COLORS.white.base 
+        }} 
       />
-      <p className="text-sm font-medium text-white mt-3">Loading...</p>
+      <p className="text-sm font-medium text-white mt-3 animate-pulse">
+        Loading...
+      </p>
     </div>
   </motion.div>
 ));
@@ -122,14 +314,24 @@ LandingLoader.displayName = 'LandingLoader';
 /* ────────────────────── HERO SECTION ────────────────────── */
 const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const colors = sectionColors.hero;
 
   useEffect(() => {
-    if (data.length <= 1) return;
+    if (!isAutoPlaying || data.length <= 1) return;
+    
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % data.length);
-    }, 5000);
+    }, SLIDE_INTERVAL);
+    
     return () => clearInterval(timer);
-  }, [data.length]);
+  }, [data.length, isAutoPlaying]);
+
+  const handleSlideChange = useCallback((index: number) => {
+    setCurrentSlide(index);
+    setIsAutoPlaying(false);
+    setTimeout(() => setIsAutoPlaying(true), 5000);
+  }, []);
 
   if (!data.length) return null;
 
@@ -138,74 +340,106 @@ const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
 
   return (
     <section className="relative h-[60vh] min-h-[450px] w-full overflow-hidden">
+      <ModernBackgroundGrid color={colors.primary} variant="default" />
+      
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.7 }}
+          transition={{ duration: 0.5 }}
           className="absolute inset-0"
         >
           <img 
             src={imageUrl} 
             alt={slide.heading || "Hero image"} 
             className="w-full h-full object-cover"
+            loading="eager"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0069B4]/90 to-[#FF3520]/70" />
+          {/* Minimal overlay to show logo/image clearly */}
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              background: colors.overlay
+            }}
+          />
         </motion.div>
       </AnimatePresence>
 
-      <div className="relative z-10 h-full flex items-center">
+      <div className="relative z-20 h-full flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
             className="max-w-2xl"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
+            <motion.div 
+              variants={slideInDown}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 backdrop-blur-sm border border-white/20 mb-4"
+            >
               <SparklesIcon className="w-3.5 h-3.5 text-white" />
               <span className="text-xs font-medium text-white/90">Welcome</span>
-            </div>
+            </motion.div>
 
-            <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">
+            <motion.h1 
+              variants={slideInLeft}
+              className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg"
+            >
               {slide.heading || "Shaping Tanzania's Media Landscape"}
-            </h1>
+            </motion.h1>
             
             {slide.description && (
-              <p className="text-base text-white/80 mb-6 max-w-lg line-clamp-2">
+              <motion.p 
+                variants={slideInRight}
+                className="text-base text-white/90 mb-6 max-w-lg line-clamp-2 drop-shadow"
+              >
                 {cleanForSEO(slide.description)}
-              </p>
+              </motion.p>
             )}
 
-            <div className="flex items-center gap-3">
-              <button className="px-6 py-2.5 bg-[#FF3520] text-white rounded-full font-medium text-sm hover:shadow-lg transition-all">
-                Discover Our Journey
-              </button>
+            <motion.div 
+              variants={slideInUp}
+              className="flex items-center gap-3"
+            >
+              <Link to="/about/journey">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-6 py-2.5 text-white rounded-full font-medium text-sm hover:shadow-lg transition-all"
+                  style={{ backgroundColor: colors.secondary }}
+                >
+                  Discover Our Journey
+                </motion.button>
+              </Link>
               
               <div className="flex gap-2">
                 {data.map((_, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setCurrentSlide(idx)}
+                    onClick={() => handleSlideChange(idx)}
                     className="h-1.5 rounded-full transition-all cursor-pointer"
                     style={{ 
                       width: idx === currentSlide ? 28 : 8,
-                      backgroundColor: idx === currentSlide ? '#FF3520' : 'rgba(255,255,255,0.3)'
+                      backgroundColor: idx === currentSlide ? colors.secondary : 'rgba(255,255,255,0.5)'
                     }}
                     aria-label={`Go to slide ${idx + 1}`}
                   />
                 ))}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <ChevronDownIcon className="w-4 h-4 text-white/60 animate-bounce" />
-      </div>
+      <motion.div 
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="absolute z-20 bottom-4 left-1/2 -translate-x-1/2"
+      >
+        <ChevronDownIcon className="w-4 h-4 text-white/80" />
+      </motion.div>
     </section>
   );
 });
@@ -214,35 +448,41 @@ HeroSection.displayName = 'HeroSection';
 
 /* ────────────────────── ABOUT SECTION ────────────────────── */
 const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const colors = sectionColors.about;
 
   if (!content) return null;
 
-  const paragraphs = content.description
-    .split(/\n\s*\n/)
-    .map(cleanForSEO)
-    .filter(Boolean)
-    .slice(0, 2);
+  const paragraphs = useMemo(() => 
+    content.description
+      .split(/\n\s*\n/)
+      .map(cleanForSEO)
+      .filter(Boolean)
+      .slice(0, 2)
+  , [content.description]);
 
   return (
-    <section className="relative bg-white overflow-hidden py-16">
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
+      <ModernBackgroundGrid color={colors.primary} variant="light" />
+      
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            variants={slideInLeft}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
             className="space-y-4"
           >
             <div className="flex items-center gap-2">
-              <div className="w-10 h-px bg-[#0069B4]" />
-              <span className="text-xs font-semibold tracking-wider text-[#0069B4] uppercase">
+              <div className="w-10 h-px" style={{ backgroundColor: colors.primary }} />
+              <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: colors.primary }}>
                 Who We Are
               </span>
             </div>
             
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">{content.category}</h2>
+            <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
+              {content.category}
+            </h2>
             
             <div className="space-y-3">
               {paragraphs.map((p, i) => (
@@ -253,19 +493,22 @@ const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) 
 
           {content.video_link && (
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              variants={slideInRight}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
               className="relative"
             >
-              <div className="relative rounded-xl overflow-hidden shadow-xl bg-black aspect-video">
+              <div 
+                className="relative rounded-xl overflow-hidden shadow-xl bg-black aspect-video"
+                style={{ boxShadow: `0 20px 25px -5px ${colors.primary}40` }}
+              >
                 <iframe
-                  ref={iframeRef}
-                  src={`${content.video_link}?autoplay=1&mute=1&controls=0`}
+                  src={`${content.video_link}?autoplay=0&mute=1&controls=1`}
                   title={content.category}
                   className="w-full h-full"
                   loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 />
               </div>
             </motion.div>
@@ -280,42 +523,54 @@ AboutSection.displayName = 'AboutSection';
 
 /* ────────────────────── VISION MISSION ────────────────────── */
 const VisionMissionSection = memo(() => {
-  const items = [
+  const colors = sectionColors.vision;
+
+  const items = useMemo(() => [
     {
       icon: EyeIcon,
       title: "Our Vision",
-      description: "To be the leading digital multimedia company in Tanzania, transforming how people consume and interact with media.",
-      color: PRIMARY_COLOR,
+      description: "To be the leading digital multimedia company in Tanzania.",
     },
     {
       icon: RocketLaunchIcon,
       title: "Our Mission",
-      description: "To enrich lives and empower positive change through superior media content and innovative digital solutions.",
-      color: SECONDARY_COLOR,
+      description: "To enrich lives and empower positive change through superior media.",
     }
-  ];
+  ], []);
 
   return (
-    <section className="relative bg-gray-50 overflow-hidden py-16">
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Vision & Mission</h2>
-        </div>
+    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
+      <ModernBackgroundGrid color={colors.primary} variant="light" />
+      
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          variants={fadeIn}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
+            Vision & Mission
+          </h2>
+        </motion.div>
         
         <div className="grid md:grid-cols-2 gap-6">
           {items.map((item, index) => (
             <motion.div
               key={item.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-white rounded-xl p-6 shadow-lg"
+              variants={index === 0 ? slideInLeft : slideInRight}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              whileHover="hover"
+              className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg"
+              style={{ borderLeft: `4px solid ${colors.primary}` }}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div 
                   className="w-12 h-12 rounded-lg flex items-center justify-center"
-                  style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}dd)` }}
+                  style={{ background: colors.gradient }}
                 >
                   <item.icon className="w-5 h-5 text-white" />
                 </div>
@@ -334,17 +589,28 @@ VisionMissionSection.displayName = 'VisionMissionSection';
 
 /* ────────────────────── VALUES SECTION ────────────────────── */
 const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCardClick: (v: ValueData) => void }) => {
-  const icons = [ShieldCheckIcon, HeartIcon, LightBulbIcon, UsersIcon];
+  const colors = sectionColors.values;
+  const icons = useMemo(() => [ShieldCheckIcon, HeartIcon, LightBulbIcon, UsersIcon], []);
   const displayValues = values.slice(0, 4);
 
   if (!displayValues.length) return null;
 
   return (
-    <section className="relative bg-white overflow-hidden py-16">
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Our Values</h2>
-        </div>
+    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
+      <ModernBackgroundGrid color={colors.primary} variant="light" />
+      
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          variants={fadeIn}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
+            Our Values
+          </h2>
+        </motion.div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {displayValues.map((value, idx) => {
@@ -353,23 +619,30 @@ const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCa
             return (
               <motion.button
                 key={value.value_id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                variants={scaleIn}
+                initial="hidden"
+                whileInView="visible"
+                whileHover="hover"
+                viewport={{ once: true, amount: 0.2 }}
                 onClick={() => onCardClick(value)}
                 className="text-left group"
               >
-                <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-md hover:shadow-lg transition-all">
+                <div 
+                  className="bg-white/90 backdrop-blur-sm p-5 rounded-lg border shadow-md hover:shadow-lg transition-all"
+                  style={{ 
+                    borderColor: `${colors.primary}20`,
+                    borderTop: `3px solid ${colors.primary}`
+                  }}
+                >
                   <div 
                     className="w-12 h-12 mb-3 rounded-lg flex items-center justify-center"
-                    style={{ background: `linear-gradient(135deg, ${PRIMARY_COLOR}15, ${SECONDARY_COLOR}15)` }}
+                    style={{ background: `${colors.primary}15` }}
                   >
-                    <Icon className="w-5 h-5" style={{ color: PRIMARY_COLOR }} />
+                    <Icon className="w-5 h-5" style={{ color: colors.primary }} />
                   </div>
                   <h3 className="text-base font-bold text-gray-900 mb-1 line-clamp-1">{value.category}</h3>
                   <p className="text-xs text-gray-500 line-clamp-2">
-                    {value.description?.substring(0, 50)}...
+                    {truncateText(value.description || "", 50)}
                   </p>
                 </div>
               </motion.button>
@@ -385,26 +658,39 @@ ValuesSection.displayName = 'ValuesSection';
 
 /* ────────────────────── REACH SECTION ────────────────────── */
 const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[] }) => {
+  const colors = sectionColors.reach;
   const displaySubs = subscriptions.slice(0, 5);
 
   if (!displaySubs.length) return null;
 
   return (
-    <section className="relative bg-gray-50 overflow-hidden py-16">
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Our Reach</h2>
-        </div>
+    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
+      <ModernBackgroundGrid color={colors.primary} variant="light" />
+      
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          variants={fadeIn}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
+            Our Reach
+          </h2>
+          <p className="text-gray-600 mt-2">Connecting millions across Tanzania</p>
+        </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {displaySubs.map((sub, index) => (
             <motion.div
               key={sub.subscription_id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="bg-white p-4 rounded-lg text-center shadow-md"
+              variants={index % 2 === 0 ? slideInUp : slideInDown}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              className="bg-white/90 backdrop-blur-sm p-4 rounded-lg text-center shadow-md"
+              style={{ borderBottom: `3px solid ${colors.primary}` }}
             >
               <div className="w-14 h-14 mx-auto mb-2">
                 <img
@@ -415,7 +701,7 @@ const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[
                 />
               </div>
               <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-1">{sub.category}</h3>
-              <div className="text-xl font-bold" style={{ color: PRIMARY_COLOR }}>
+              <div className="text-xl font-bold" style={{ color: colors.primary }}>
                 <CountUp end={sub.total_viewers} duration={2} separator="," />
               </div>
             </motion.div>
@@ -429,58 +715,72 @@ const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[
 ReachSection.displayName = 'ReachSection';
 
 /* ────────────────────── IMAGE MODAL ────────────────────── */
-const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title: string; onClose: () => void }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50"
-    onClick={onClose}
-  >
+const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title: string; onClose: () => void }) => {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
     <motion.div
-      initial={{ scale: 0.9 }}
-      animate={{ scale: 1 }}
-      exit={{ scale: 0.9 }}
-      className="relative max-w-5xl w-full"
-      onClick={(e) => e.stopPropagation()}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
     >
-      <button 
-        onClick={onClose} 
-        className="absolute -top-10 right-0 text-white/70 hover:text-white"
-        aria-label="Close modal"
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        className="relative max-w-5xl w-full z-20"
+        onClick={(e) => e.stopPropagation()}
       >
-        <XMarkIcon className="w-6 h-6" />
-      </button>
-      <img 
-        src={imageUrl} 
-        alt={title} 
-        className="w-full h-full object-contain max-h-[80vh] rounded-lg"
-      />
+        <button 
+          onClick={onClose} 
+          className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
+          aria-label="Close modal"
+        >
+          <XMarkIcon className="w-6 h-6" />
+        </button>
+        <img 
+          src={imageUrl} 
+          alt={title} 
+          className="w-full h-full object-contain max-h-[80vh] rounded-lg"
+        />
+      </motion.div>
     </motion.div>
-  </motion.div>
-));
+  );
+});
 
 ImageModal.displayName = 'ImageModal';
 
 /* ────────────────────── DISCOVER CARDS ────────────────────── */
 const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
+  const colors = sectionColors.discover;
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
   
-  const getIcon = (type: string) => {
+  const getIcon = useCallback((type: string) => {
     switch(type) {
       case "Brand": return BuildingOfficeIcon;
       case "News": return NewspaperIcon;
       case "Events": return CalendarIcon;
       default: return BuildingOfficeIcon;
     }
-  };
+  }, []);
 
   const displayCards = cards.slice(0, 3);
 
   if (!displayCards.length) return null;
 
   return (
-    <section className="relative bg-white overflow-hidden py-16">
+    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
+      <ModernBackgroundGrid color={colors.primary} variant="light" />
+      
       <AnimatePresence>
         {selectedImage && (
           <ImageModal
@@ -491,10 +791,19 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Discover More</h2>
-        </div>
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          variants={fadeIn}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
+            Discover More
+          </h2>
+          <p className="text-gray-600 mt-2">Explore our latest stories and updates</p>
+        </motion.div>
         
         <div className="grid md:grid-cols-3 gap-6">
           {displayCards.map((card, index) => {
@@ -504,27 +813,30 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
             return (
               <motion.div
                 key={`${card.type}-${card.id}`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="bg-white rounded-xl overflow-hidden shadow-lg"
+                variants={index === 0 ? slideInLeft : index === 1 ? slideInUp : slideInRight}
+                initial="hidden"
+                whileInView="visible"
+                whileHover="hover"
+                viewport={{ once: true, amount: 0.2 }}
+                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg"
+                style={{ borderRight: `3px solid ${colors.primary}` }}
               >
-                <div className="relative h-48 bg-gray-100">
+                <div className="relative h-48 bg-gray-100 overflow-hidden">
                   <img
                     src={imageUrl}
                     alt={card.title}
-                    className="w-full h-full object-cover cursor-pointer"
+                    className="w-full h-full object-cover cursor-pointer transition-transform duration-300 hover:scale-110"
                     onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
                     loading="lazy"
                   />
                   
                   <div className="absolute bottom-2 left-2">
-                    <div className="px-2 py-1 bg-white/95 backdrop-blur-sm rounded text-xs font-semibold flex items-center gap-1">
-                      <Icon className="w-3 h-3" style={{ color: card.type === "Brand" ? PRIMARY_COLOR : SECONDARY_COLOR }} />
-                      <span style={{ color: card.type === "Brand" ? PRIMARY_COLOR : SECONDARY_COLOR }}>
-                        {card.type}
-                      </span>
+                    <div 
+                      className="px-2 py-1 backdrop-blur-sm rounded text-xs font-semibold flex items-center gap-1"
+                      style={{ backgroundColor: `${colors.primary}E6`, color: 'white' }}
+                    >
+                      <Icon className="w-3 h-3 text-white" />
+                      <span>{card.type}</span>
                     </div>
                   </div>
                 </div>
@@ -534,11 +846,11 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
                   <Link 
                     to={card.linkUrl} 
-                    className="inline-flex items-center gap-1 text-sm font-semibold"
-                    style={{ color: PRIMARY_COLOR }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold group"
+                    style={{ color: colors.primary }}
                   >
                     Learn More 
-                    <ArrowRightIcon className="w-3 h-3" />
+                    <ArrowRightIcon className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>
               </motion.div>
@@ -547,16 +859,22 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
         </div>
 
         {cards.length > 3 && (
-          <div className="text-center mt-12">
+          <motion.div 
+            variants={fadeIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
             <Link 
               to="/discover-more" 
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm border-2 transition-all hover:shadow-md"
-              style={{ borderColor: PRIMARY_COLOR, color: PRIMARY_COLOR }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm border-2 transition-all hover:shadow-md hover:scale-105"
+              style={{ borderColor: colors.primary, color: colors.primary }}
             >
               View All Stories
               <ArrowRightIcon className="w-3.5 h-3.5" />
             </Link>
-          </div>
+          </motion.div>
         )}
       </div>
     </section>
@@ -566,46 +884,62 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
 DiscoverCards.displayName = 'DiscoverCards';
 
 /* ────────────────────── VALUE MODAL ────────────────────── */
-const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => void }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
-    onClick={onClose}
-  >
-    <motion.div
-      initial={{ scale: 0.9, y: 10 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: -10 }}
-      className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl relative"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button 
-        onClick={onClose} 
-        className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-        aria-label="Close modal"
-      >
-        <XMarkIcon className="w-5 h-5" />
-      </button>
+const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => void }) => {
+  const colors = sectionColors.values;
 
-      <div className="text-center">
-        <div 
-          className="w-16 h-16 mx-auto mb-3 rounded-lg flex items-center justify-center p-3"
-          style={{ background: `linear-gradient(135deg, ${PRIMARY_COLOR}15, ${SECONDARY_COLOR}15)` }}
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: -10 }}
+        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        className="bg-white/95 backdrop-blur-sm rounded-xl max-w-md w-full p-6 shadow-xl relative z-20"
+        onClick={(e) => e.stopPropagation()}
+        style={{ boxShadow: `0 25px 50px -12px ${colors.primary}60` }}
+      >
+        <button 
+          onClick={onClose} 
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Close modal"
         >
-          <img
-            src={buildImageUrl(value.img_file) || ""}
-            alt={value.category}
-            className="w-full h-full object-contain"
-          />
+          <XMarkIcon className="w-5 h-5" />
+        </button>
+
+        <div className="text-center">
+          <div 
+            className="w-16 h-16 mx-auto mb-3 rounded-lg flex items-center justify-center p-3"
+            style={{ background: `${colors.primary}15` }}
+          >
+            <img
+              src={buildImageUrl(value.img_file) || ""}
+              alt={value.category}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <h3 className="text-xl font-bold mb-2" style={{ color: colors.primary }}>
+            {value.category}
+          </h3>
+          <p className="text-sm text-gray-600">{value.description}</p>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{value.category}</h3>
-        <p className="text-sm text-gray-600">{value.description}</p>
-      </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
-));
+  );
+});
 
 ValueModal.displayName = 'ValueModal';
 
@@ -618,38 +952,40 @@ const AboutFTSection = () => {
   const [values, setValues] = useState<ValueData[]>([]);
   const [cards, setCards] = useState<AboutCardData[]>([]);
   const [selectedValue, setSelectedValue] = useState<ValueData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
 
     const loadData = async () => {
       try {
         const [hero, subs, about, vals, brand, news, event] = await Promise.allSettled([
-          axiosInstance.get("/api/slider-imgs"),
-          axiosInstance.get("/api/allsubscriptions"),
-          axiosInstance.get("/api/about-mwananchi/all"),
-          axiosInstance.get("/api/values/all"),
-          axiosInstance.get("/api/latestbrand"),
-          axiosInstance.get("/api/latestnew"),
-          axiosInstance.get("/api/latestEvent"),
+          axiosInstance.get("/api/slider-imgs", { signal: controller.signal }),
+          axiosInstance.get("/api/allsubscriptions", { signal: controller.signal }),
+          axiosInstance.get("/api/about-mwananchi/all", { signal: controller.signal }),
+          axiosInstance.get("/api/values/all", { signal: controller.signal }),
+          axiosInstance.get("/api/latestbrand", { signal: controller.signal }),
+          axiosInstance.get("/api/latestnew", { signal: controller.signal }),
+          axiosInstance.get("/api/latestEvent", { signal: controller.signal }),
         ]);
 
         if (!mounted) return;
 
-        if (hero.status === "fulfilled") {
+        if (hero.status === "fulfilled" && hero.value.data) {
           setSliderData(hero.value.data || []);
         }
 
-        if (subs.status === "fulfilled") {
-          setSubscriptions(subs.value.data?.data || []);
+        if (subs.status === "fulfilled" && subs.value.data?.data) {
+          setSubscriptions(subs.value.data.data || []);
         }
 
         if (about.status === "fulfilled" && about.value.data?.records?.[0]) {
           setAboutContent(about.value.data.records[0]);
         }
 
-        if (vals.status === "fulfilled") {
-          setValues(vals.value.data?.values || []);
+        if (vals.status === "fulfilled" && vals.value.data?.values) {
+          setValues(vals.value.data.values || []);
         }
 
         const cardItems: AboutCardData[] = [];
@@ -688,11 +1024,16 @@ const AboutFTSection = () => {
         }
 
         setCards(cardItems);
-      } catch (error) {
-        console.error("Error loading data:", error);
+        setError(null);
+      } catch (err) {
+        if (!mounted) return;
+        if (err instanceof Error && err.name !== 'CanceledError') {
+          console.error("Error loading data:", err);
+          setError("Failed to load content. Please refresh the page.");
+        }
       } finally {
         if (mounted) {
-          setTimeout(() => setIsLoading(false), 500);
+          setTimeout(() => setIsLoading(false), LOADING_DELAY);
         }
       }
     };
@@ -701,12 +1042,51 @@ const AboutFTSection = () => {
 
     return () => {
       mounted = false;
+      controller.abort();
     };
   }, []);
 
+  const handleValueClick = useCallback((value: ValueData) => {
+    setSelectedValue(value);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedValue(null);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-white rounded-lg transition-colors"
+            style={{ backgroundColor: COLORS.primary.base }}
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-white">
-      <ToastContainer position="top-right" theme="colored" />
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-white relative"
+    >
+      <ToastContainer 
+        position="top-right" 
+        theme="colored" 
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss={false}
+      />
       
       <AnimatePresence mode="wait">
         {isLoading && <LandingLoader />}
@@ -714,18 +1094,22 @@ const AboutFTSection = () => {
 
       <AnimatePresence>
         {selectedValue && (
-          <ValueModal value={selectedValue} onClose={() => setSelectedValue(null)} />
+          <ValueModal value={selectedValue} onClose={handleCloseModal} />
         )}
       </AnimatePresence>
 
       {!isLoading && (
-        <>
+        <div className="relative z-20">
           <Helmet>
             <title>About Us | Leading Media Company in Tanzania</title>
             <meta 
               name="description" 
               content={aboutContent ? cleanForSEO(aboutContent.description).slice(0, 155) : "Leading digital multimedia company in Tanzania"} 
             />
+            <meta name="keywords" content="media, tanzania, digital, multimedia, news, brands" />
+            <meta property="og:title" content="About Us | Leading Media Company in Tanzania" />
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content={window.location.href} />
           </Helmet>
 
           <HeroSection data={sliderData} />
@@ -733,16 +1117,16 @@ const AboutFTSection = () => {
           <main>
             <AboutSection content={aboutContent} />
             <VisionMissionSection />
-            <ValuesSection values={values} onCardClick={setSelectedValue} />
+            <ValuesSection values={values} onCardClick={handleValueClick} />
             <ReachSection subscriptions={subscriptions} />
             <DiscoverCards cards={cards} />
           </main>
           
           <Footer />
-        </>
+        </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
-export default AboutFTSection;
+export default memo(AboutFTSection);
