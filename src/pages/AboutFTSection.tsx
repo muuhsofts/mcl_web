@@ -20,7 +20,7 @@ import {
 import CountUp from "react-countup";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
-import { useEffect, useState, useRef, memo, useCallback, useMemo } from "react";
+import { useEffect, useState, memo, useCallback, useMemo } from "react"; // Removed useRef
 import { Helmet } from "react-helmet";
 
 /* ────────────────────── COMPANY COLORS ────────────────────── */
@@ -178,17 +178,7 @@ const staggerContainer: Variants = {
   }
 };
 
-const cardHover = {
-  rest: { scale: 1 },
-  hover: { scale: 1.03, transition: { duration: 0.2 } }
-};
-
-const floatAnimation: Variants = {
-  animate: {
-    y: [0, -5, 0],
-    transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
-  }
-};
+// Removed unused cardHover and floatAnimation
 
 /* ────────────────────── SECTION COLOR CONFIG ────────────────────── */
 const sectionColors = {
@@ -563,7 +553,6 @@ const VisionMissionSection = memo(() => {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              whileHover="hover"
               className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg"
               style={{ borderLeft: `4px solid ${colors.primary}` }}
             >
@@ -622,7 +611,6 @@ const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCa
                 variants={scaleIn}
                 initial="hidden"
                 whileInView="visible"
-                whileHover="hover"
                 viewport={{ once: true, amount: 0.2 }}
                 onClick={() => onCardClick(value)}
                 className="text-left group"
@@ -816,7 +804,6 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                 variants={index === 0 ? slideInLeft : index === 1 ? slideInUp : slideInRight}
                 initial="hidden"
                 whileInView="visible"
-                whileHover="hover"
                 viewport={{ once: true, amount: 0.2 }}
                 className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg"
                 style={{ borderRight: `3px solid ${colors.primary}` }}
