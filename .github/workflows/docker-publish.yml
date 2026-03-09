@@ -14,7 +14,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          # Match your GitHub Secrets exactly (with underscores)
+          # Match your GitHub Secrets exactly 
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
