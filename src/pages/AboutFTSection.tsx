@@ -16,11 +16,13 @@ import {
   LightBulbIcon,
   UsersIcon,
   SparklesIcon,
+  PlayIcon,
+  PauseIcon,
 } from "@heroicons/react/24/outline";
 import CountUp from "react-countup";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
-import { useEffect, useState, memo, useCallback, useMemo } from "react"; // Removed useRef
+import { useEffect, useState, memo, useCallback, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet";
 
 /* ────────────────────── COMPANY COLORS ────────────────────── */
@@ -52,8 +54,10 @@ const COLORS = {
     light3: "#E6E6E6",
     light4: "#CCCCCC",
   },
-  // New color for Vision, Values, Reach sections
   lightGray: "#f5f0f0",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
 };
 
 const API_BASE_URL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
@@ -111,12 +115,19 @@ const cleanForSEO = (text: string): string => {
 
 const buildImageUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
+  if (path.startsWith('http')) return path;
   return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 };
 
 const truncateText = (text: string, maxLength: number): string => {
   if (!text || text.length <= maxLength) return text;
   return `${text.substring(0, maxLength)}...`;
+};
+
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
 };
 
 /* ────────────────────── ANIMATION VARIANTS ────────────────────── */
@@ -178,8 +189,6 @@ const staggerContainer: Variants = {
   }
 };
 
-// Removed unused cardHover and floatAnimation
-
 /* ────────────────────── SECTION COLOR CONFIG ────────────────────── */
 const sectionColors = {
   hero: {
@@ -197,25 +206,25 @@ const sectionColors = {
     background: COLORS.white.light2,
   },
   vision: {
-    primary: COLORS.primary.base, // Changed to blue
+    primary: COLORS.primary.base,
     secondary: COLORS.accent.base,
     gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
     light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
+    background: COLORS.lightGray,
   },
   values: {
-    primary: COLORS.primary.base, // Changed to blue
+    primary: COLORS.primary.base,
     secondary: COLORS.accent.base,
     gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
     light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
+    background: COLORS.lightGray,
   },
   reach: {
-    primary: COLORS.primary.base, // Changed to blue
+    primary: COLORS.primary.base,
     secondary: COLORS.accent.base,
     gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
     light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
+    background: COLORS.lightGray,
   },
   discover: {
     primary: COLORS.primary.base,
@@ -228,17 +237,16 @@ const sectionColors = {
 
 /* ────────────────────── OPTIMIZED BACKGROUND GRID ────────────────────── */
 const ModernBackgroundGrid = memo(({ color = COLORS.primary.base, variant = 'default' }: { color?: string; variant?: string }) => {
-  const getOpacity = () => {
+  const getOpacity = useCallback(() => {
     switch(variant) {
       case 'light': return '08';
       case 'medium': return '12';
       default: return '05';
     }
-  };
+  }, [variant]);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none will-change-transform">
-      {/* Base gradient with section-specific color */}
       <div 
         className="absolute inset-0"
         style={{ 
@@ -246,7 +254,6 @@ const ModernBackgroundGrid = memo(({ color = COLORS.primary.base, variant = 'def
         }}
       />
       
-      {/* Grid pattern with section color */}
       <div 
         className="absolute inset-0 opacity-20"
         style={{
@@ -258,7 +265,6 @@ const ModernBackgroundGrid = memo(({ color = COLORS.primary.base, variant = 'def
         }}
       />
       
-      {/* Floating orb with section color */}
       <motion.div
         animate={{ 
           y: [0, -15, 0],
@@ -282,19 +288,21 @@ const LandingLoader = memo(() => (
     initial={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     className="fixed inset-0 flex items-center justify-center z-50"
-    style={{ backgroundColor: COLORS.primary.base }} // Changed to #0069B4
+    style={{ backgroundColor: COLORS.primary.base }}
   >
     <div className="relative z-10 text-center">
-      <div 
-        className="w-12 h-12 border-3 rounded-full mx-auto animate-spin"
-        style={{ 
-          borderColor: `${COLORS.white.base}30`,
-          borderTopColor: COLORS.white.base 
-        }} 
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"
       />
-      <p className="text-sm font-medium text-white mt-3 animate-pulse">
+      <motion.p 
+        animate={{ opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="text-sm font-medium text-white"
+      >
         Loading...
-      </p>
+      </motion.p>
     </div>
   </motion.div>
 ));
@@ -305,22 +313,27 @@ LandingLoader.displayName = 'LandingLoader';
 const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const colors = sectionColors.hero;
 
   useEffect(() => {
-    if (!isAutoPlaying || data.length <= 1) return;
+    if (!isAutoPlaying || data.length <= 1 || isPaused) return;
     
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % data.length);
     }, SLIDE_INTERVAL);
     
     return () => clearInterval(timer);
-  }, [data.length, isAutoPlaying]);
+  }, [data.length, isAutoPlaying, isPaused]);
 
   const handleSlideChange = useCallback((index: number) => {
     setCurrentSlide(index);
     setIsAutoPlaying(false);
     setTimeout(() => setIsAutoPlaying(true), 5000);
+  }, []);
+
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev);
   }, []);
 
   if (!data.length) return null;
@@ -329,7 +342,10 @@ const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
   const imageUrl = buildImageUrl(slide.home_img) || "";
 
   return (
-    <section className="relative h-[60vh] min-h-[450px] w-full overflow-hidden">
+    <section 
+      className="relative h-[60vh] min-h-[450px] w-full overflow-hidden"
+      aria-label="Hero slideshow"
+    >
       <ModernBackgroundGrid color={colors.primary} variant="default" />
       
       <AnimatePresence mode="wait">
@@ -346,13 +362,13 @@ const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
             alt={slide.heading || "Hero image"} 
             className="w-full h-full object-cover"
             loading="eager"
+            onError={(e) => {
+              e.currentTarget.src = '/fallback-image.jpg';
+            }}
           />
-          {/* Minimal overlay to show logo/image clearly */}
           <div 
             className="absolute inset-0"
-            style={{ 
-              background: colors.overlay
-            }}
+            style={{ background: colors.overlay }}
           />
         </motion.div>
       </AnimatePresence>
@@ -370,7 +386,7 @@ const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 backdrop-blur-sm border border-white/20 mb-4"
             >
               <SparklesIcon className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white/90">Welcome</span>
+              <span className="text-xs font-medium text-white/90">Welcome to Mwananchi</span>
             </motion.div>
 
             <motion.h1 
@@ -391,33 +407,50 @@ const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
 
             <motion.div 
               variants={slideInUp}
-              className="flex items-center gap-3"
+              className="flex items-center gap-3 flex-wrap"
             >
               <Link to="/about/journey">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-6 py-2.5 text-white rounded-full font-medium text-sm hover:shadow-lg transition-all"
+                  className="px-6 py-2.5 text-white rounded-full font-medium text-sm hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-transparent"
                   style={{ backgroundColor: colors.secondary }}
+                  aria-label="Discover our journey"
                 >
                   Discover Our Journey
                 </motion.button>
               </Link>
               
-              <div className="flex gap-2">
-                {data.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSlideChange(idx)}
-                    className="h-1.5 rounded-full transition-all cursor-pointer"
-                    style={{ 
-                      width: idx === currentSlide ? 28 : 8,
-                      backgroundColor: idx === currentSlide ? colors.secondary : 'rgba(255,255,255,0.5)'
-                    }}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
+              <button
+                onClick={togglePause}
+                className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+                aria-label={isPaused ? "Play slideshow" : "Pause slideshow"}
+              >
+                {isPaused ? (
+                  <PlayIcon className="w-4 h-4 text-white" />
+                ) : (
+                  <PauseIcon className="w-4 h-4 text-white" />
+                )}
+              </button>
+            </motion.div>
+
+            <motion.div 
+              variants={slideInUp}
+              className="flex gap-2 mt-6"
+            >
+              {data.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSlideChange(idx)}
+                  className="h-1.5 rounded-full transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-white"
+                  style={{ 
+                    width: idx === currentSlide ? 28 : 8,
+                    backgroundColor: idx === currentSlide ? colors.secondary : 'rgba(255,255,255,0.5)'
+                  }}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  aria-current={idx === currentSlide}
+                />
+              ))}
             </motion.div>
           </motion.div>
         </div>
@@ -494,11 +527,12 @@ const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) 
                 style={{ boxShadow: `0 20px 25px -5px ${colors.primary}40` }}
               >
                 <iframe
-                  src={`${content.video_link}?autoplay=0&mute=1&controls=1`}
+                  src={`${content.video_link}?autoplay=0&mute=1&controls=1&modestbranding=1`}
                   title={content.category}
                   className="w-full h-full"
                   loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
                 />
               </div>
             </motion.div>
@@ -519,12 +553,12 @@ const VisionMissionSection = memo(() => {
     {
       icon: EyeIcon,
       title: "Our Vision",
-      description: "To be the leading digital multimedia company in Tanzania.",
+      description: "To be the leading digital multimedia company in Tanzania, empowering communities through innovative storytelling and cutting-edge technology.",
     },
     {
       icon: RocketLaunchIcon,
       title: "Our Mission",
-      description: "To enrich lives and empower positive change through superior media.",
+      description: "To enrich lives and empower positive change through superior media content, fostering informed communities and driving social progress across Tanzania.",
     }
   ], []);
 
@@ -553,7 +587,7 @@ const VisionMissionSection = memo(() => {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg"
+              className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow"
               style={{ borderLeft: `4px solid ${colors.primary}` }}
             >
               <div className="flex items-center gap-3 mb-3">
@@ -597,8 +631,9 @@ const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCa
           className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-            Our Values
+            Our Core Values
           </h2>
+          <p className="text-gray-600 mt-2">The principles that guide everything we do</p>
         </motion.div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -613,17 +648,18 @@ const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCa
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.2 }}
                 onClick={() => onCardClick(value)}
-                className="text-left group"
+                className="text-left group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg"
+                aria-label={`View details about ${value.category}`}
               >
                 <div 
-                  className="bg-white/90 backdrop-blur-sm p-5 rounded-lg border shadow-md hover:shadow-lg transition-all"
+                  className="bg-white/90 backdrop-blur-sm p-5 rounded-lg border shadow-md hover:shadow-lg transition-all hover:-translate-y-1"
                   style={{ 
                     borderColor: `${colors.primary}20`,
                     borderTop: `3px solid ${colors.primary}`
                   }}
                 >
                   <div 
-                    className="w-12 h-12 mb-3 rounded-lg flex items-center justify-center"
+                    className="w-12 h-12 mb-3 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
                     style={{ background: `${colors.primary}15` }}
                   >
                     <Icon className="w-5 h-5" style={{ color: colors.primary }} />
@@ -648,6 +684,9 @@ ValuesSection.displayName = 'ValuesSection';
 const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[] }) => {
   const colors = sectionColors.reach;
   const displaySubs = subscriptions.slice(0, 5);
+  const totalReach = useMemo(() => 
+    subscriptions.reduce((sum, sub) => sum + sub.total_viewers, 0)
+  , [subscriptions]);
 
   if (!displaySubs.length) return null;
 
@@ -666,7 +705,7 @@ const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[
           <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
             Our Reach
           </h2>
-          <p className="text-gray-600 mt-2">Connecting millions across Tanzania</p>
+          <p className="text-gray-600 mt-2">Connecting <span className="font-bold" style={{ color: colors.primary }}><CountUp end={totalReach} duration={2.5} separator="," /></span>+ people across Tanzania</p>
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -677,15 +716,18 @@ const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              className="bg-white/90 backdrop-blur-sm p-4 rounded-lg text-center shadow-md"
+              className="bg-white/90 backdrop-blur-sm p-4 rounded-lg text-center shadow-md hover:shadow-lg transition-shadow"
               style={{ borderBottom: `3px solid ${colors.primary}` }}
             >
               <div className="w-14 h-14 mx-auto mb-2">
                 <img
-                  src={buildImageUrl(sub.logo_img_file) || ""}
+                  src={buildImageUrl(sub.logo_img_file) || "/placeholder-logo.png"}
                   alt={sub.category}
                   className="w-full h-full object-contain"
                   loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder-logo.png';
+                  }}
                 />
               </div>
               <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-1">{sub.category}</h3>
@@ -709,7 +751,12 @@ const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
   }, [onClose]);
 
   return (
@@ -719,6 +766,9 @@ const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image preview"
     >
       <motion.div
         initial={{ scale: 0.9 }}
@@ -730,7 +780,7 @@ const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title
       >
         <button 
           onClick={onClose} 
-          className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
+          className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white rounded-full p-1"
           aria-label="Close modal"
         >
           <XMarkIcon className="w-6 h-6" />
@@ -739,6 +789,7 @@ const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title
           src={imageUrl} 
           alt={title} 
           className="w-full h-full object-contain max-h-[80vh] rounded-lg"
+          loading="eager"
         />
       </motion.div>
     </motion.div>
@@ -796,7 +847,7 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
         <div className="grid md:grid-cols-3 gap-6">
           {displayCards.map((card, index) => {
             const Icon = getIcon(card.type);
-            const imageUrl = buildImageUrl(card.imageUrl) || "";
+            const imageUrl = buildImageUrl(card.imageUrl) || "/fallback-image.jpg";
             
             return (
               <motion.div
@@ -805,17 +856,22 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.2 }}
-                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg"
+                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 style={{ borderRight: `3px solid ${colors.primary}` }}
               >
-                <div className="relative h-48 bg-gray-100 overflow-hidden">
+                <div className="relative h-48 bg-gray-100 overflow-hidden group">
                   <img
                     src={imageUrl}
                     alt={card.title}
-                    className="w-full h-full object-cover cursor-pointer transition-transform duration-300 hover:scale-110"
+                    className="w-full h-full object-cover cursor-pointer transition-transform duration-500 group-hover:scale-110"
                     onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
                     loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = '/fallback-image.jpg';
+                    }}
                   />
+                  
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
                   
                   <div className="absolute bottom-2 left-2">
                     <div 
@@ -833,7 +889,7 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
                   <Link 
                     to={card.linkUrl} 
-                    className="inline-flex items-center gap-1 text-sm font-semibold group"
+                    className="inline-flex items-center gap-1 text-sm font-semibold group focus:outline-none focus:underline"
                     style={{ color: colors.primary }}
                   >
                     Learn More 
@@ -855,7 +911,7 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
           >
             <Link 
               to="/discover-more" 
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm border-2 transition-all hover:shadow-md hover:scale-105"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm border-2 transition-all hover:shadow-md hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               style={{ borderColor: colors.primary, color: colors.primary }}
             >
               View All Stories
@@ -879,7 +935,12 @@ const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => 
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
   }, [onClose]);
 
   return (
@@ -889,6 +950,9 @@ const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => 
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Value details: ${value.category}`}
     >
       <motion.div
         initial={{ scale: 0.9, y: 10 }}
@@ -901,7 +965,7 @@ const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => 
       >
         <button 
           onClick={onClose} 
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1"
           aria-label="Close modal"
         >
           <XMarkIcon className="w-5 h-5" />
@@ -913,15 +977,18 @@ const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => 
             style={{ background: `${colors.primary}15` }}
           >
             <img
-              src={buildImageUrl(value.img_file) || ""}
+              src={buildImageUrl(value.img_file) || "/placeholder-icon.png"}
               alt={value.category}
               className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.src = '/placeholder-icon.png';
+              }}
             />
           </div>
           <h3 className="text-xl font-bold mb-2" style={{ color: colors.primary }}>
             {value.category}
           </h3>
-          <p className="text-sm text-gray-600">{value.description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{value.description}</p>
         </div>
       </motion.div>
     </motion.div>
@@ -940,6 +1007,8 @@ const AboutFTSection = () => {
   const [cards, setCards] = useState<AboutCardData[]>([]);
   const [selectedValue, setSelectedValue] = useState<ValueData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -1017,6 +1086,12 @@ const AboutFTSection = () => {
         if (err instanceof Error && err.name !== 'CanceledError') {
           console.error("Error loading data:", err);
           setError("Failed to load content. Please refresh the page.");
+          
+          if (retryCount < 3) {
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 2000);
+          }
         }
       } finally {
         if (mounted) {
@@ -1031,7 +1106,7 @@ const AboutFTSection = () => {
       mounted = false;
       controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
   const handleValueClick = useCallback((value: ValueData) => {
     setSelectedValue(value);
@@ -1041,17 +1116,26 @@ const AboutFTSection = () => {
     setSelectedValue(null);
   }, []);
 
-  if (error) {
+  const handleRetry = useCallback(() => {
+    setIsLoading(true);
+    setRetryCount(prev => prev + 1);
+  }, []);
+
+  if (error && retryCount >= 3) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+            <XMarkIcon className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button 
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 text-white rounded-lg transition-colors"
+            onClick={handleRetry}
+            className="px-6 py-2.5 text-white rounded-lg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             style={{ backgroundColor: COLORS.primary.base }}
           >
-            Refresh Page
+            Try Again
           </button>
         </div>
       </div>
@@ -1060,6 +1144,7 @@ const AboutFTSection = () => {
 
   return (
     <motion.div 
+      ref={mainRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -1073,6 +1158,9 @@ const AboutFTSection = () => {
         newestOnTop
         closeOnClick
         pauseOnFocusLoss={false}
+        pauseOnHover
+        rtl={false}
+        draggable
       />
       
       <AnimatePresence mode="wait">
@@ -1088,15 +1176,20 @@ const AboutFTSection = () => {
       {!isLoading && (
         <div className="relative z-20">
           <Helmet>
-            <title>About Us | Leading Media Company in Tanzania</title>
+            <title>About Us | Leading Media Company in Tanzania | Mwananchi</title>
             <meta 
               name="description" 
-              content={aboutContent ? cleanForSEO(aboutContent.description).slice(0, 155) : "Leading digital multimedia company in Tanzania"} 
+              content={aboutContent ? cleanForSEO(aboutContent.description).slice(0, 160) : "Leading digital multimedia company in Tanzania, connecting millions through innovative media solutions"} 
             />
-            <meta name="keywords" content="media, tanzania, digital, multimedia, news, brands" />
+            <meta name="keywords" content="media, tanzania, digital, multimedia, news, brands, mwananchi, communication" />
             <meta property="og:title" content="About Us | Leading Media Company in Tanzania" />
+            <meta property="og:description" content={aboutContent ? cleanForSEO(aboutContent.description).slice(0, 200) : "Discover Mwananchi's journey in shaping Tanzania's media landscape"} />
             <meta property="og:type" content="website" />
             <meta property="og:url" content={window.location.href} />
+            <meta property="og:image" content={sliderData[0]?.home_img ? buildImageUrl(sliderData[0].home_img) || '' : ''} />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <html lang="en" />
           </Helmet>
 
           <HeroSection data={sliderData} />
