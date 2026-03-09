@@ -124,12 +124,6 @@ const truncateText = (text: string, maxLength: number): string => {
   return `${text.substring(0, maxLength)}...`;
 };
 
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-  return num.toString();
-};
-
 /* ────────────────────── ANIMATION VARIANTS ────────────────────── */
 const fadeIn: Variants = {
   hidden: { opacity: 0 },
