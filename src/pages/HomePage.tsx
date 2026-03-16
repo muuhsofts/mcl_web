@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import Header from "../components/header/Header";
 import AboutFTSection from "./AboutFTSection";
 
-
 const Home: React.FC = () => {
   return (
     <motion.div
@@ -12,9 +11,8 @@ const Home: React.FC = () => {
       transition={{ duration: 0.7 }}
     >
       <Header />
-      <main>
+      <main className="w-full"> {/* Removed pt-20 md:pt-24 - no space between header and content */}
         <AboutFTSection />
-     
       </main>
     </motion.div>
   );

@@ -1,7 +1,15 @@
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { lazy, Suspense, useEffect, useState, memo, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { Helmet } from "react-helmet";
+import CountUp from "react-countup";
+import axiosInstance from "../axios";
+
+// Lazy load heavy components
+const Footer = lazy(() => import("../components/Footer"));
+
+// Icons
 import {
   ArrowRightIcon,
   ChevronDownIcon,
@@ -16,48 +24,27 @@ import {
   LightBulbIcon,
   UsersIcon,
   SparklesIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
-import CountUp from "react-countup";
-import axiosInstance from "../axios";
-import Footer from "../components/Footer";
-import { useEffect, useState, memo, useCallback, useMemo } from "react"; // Removed useRef
-import { Helmet } from "react-helmet";
 
-/* ────────────────────── COMPANY COLORS ────────────────────── */
+// Styles
+import "react-toastify/dist/ReactToastify.css";
+
+/* ────────────────────── CONSTANTS ────────────────────── */
 const COLORS = {
-  primary: {
-    base: "#0069B4",
-    dark1: "#005A9B",
-    dark2: "#004C82",
-    dark3: "#003E69",
-    light1: "#3388C3",
-    light2: "#66A6D2",
-    light3: "#99C4E1",
-    light4: "#CCE1F0",
-  },
-  accent: {
-    base: "#FF3520",
-    dark1: "#E62F1C",
-    dark2: "#CC2A19",
-    dark3: "#B32416",
-    light1: "#FF5D4D",
-    light2: "#FF8679",
-    light3: "#FFAEA6",
-    light4: "#FFD7D2",
-  },
-  white: {
-    base: "#FFFFFF",
-    light1: "#F9F9F9",
-    light2: "#F2F2F2",
-    light3: "#E6E6E6",
-    light4: "#CCCCCC",
-  },
-  // New color for Vision, Values, Reach sections
+  primary: "#0069B4",
+  primaryDark: "#005A9B",
+  accent: "#FF3520",
+  success: "#10B981",
+  white: "#FFFFFF",
   lightGray: "#f5f0f0",
+  gray100: "#F3F4F6",
+  gray200: "#E5E7EB",
+  gray600: "#4B5563",
+  gray900: "#111827",
 };
 
 const API_BASE_URL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
-const LOADING_DELAY = 300;
 const SLIDE_INTERVAL = 5000;
 
 /* ────────────────────── TYPES ────────────────────── */
@@ -104,13 +91,13 @@ const stripHtml = (html: string): string => {
   return html.replace(/<[^>]+>/g, "").trim();
 };
 
-const cleanForSEO = (text: string): string => {
+const cleanText = (text: string): string => {
   if (!text) return "";
   return text.replace(/\s+/g, " ").trim();
 };
 
-const buildImageUrl = (path: string | null | undefined): string | null => {
-  if (!path) return null;
+const buildImageUrl = (path: string | null | undefined): string => {
+  if (!path) return "";
   return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 };
 
@@ -119,317 +106,132 @@ const truncateText = (text: string, maxLength: number): string => {
   return `${text.substring(0, maxLength)}...`;
 };
 
-/* ────────────────────── ANIMATION VARIANTS ────────────────────── */
-const fadeIn: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.4 } }
-};
-
-const slideInLeft: Variants = {
-  hidden: { opacity: 0, x: -30 },
-  visible: { 
-    opacity: 1, 
-    x: 0, 
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
-  }
-};
-
-const slideInRight: Variants = {
-  hidden: { opacity: 0, x: 30 },
-  visible: { 
-    opacity: 1, 
-    x: 0, 
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
-  }
-};
-
-const slideInUp: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
-  }
-};
-
-const slideInDown: Variants = {
-  hidden: { opacity: 0, y: -30 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 } 
-  }
-};
-
-const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { 
-    opacity: 1, 
-    scale: 1, 
-    transition: { type: "spring", stiffness: 200, damping: 25, duration: 0.4 } 
-  }
-};
-
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-};
-
-// Removed unused cardHover and floatAnimation
-
-/* ────────────────────── SECTION COLOR CONFIG ────────────────────── */
-const sectionColors = {
-  hero: {
-    primary: COLORS.primary.base,
-    secondary: COLORS.accent.base,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
-    light: COLORS.primary.light4,
-    overlay: 'rgba(0,0,0,0.2)',
-  },
-  about: {
-    primary: COLORS.primary.base,
-    secondary: COLORS.accent.light1,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.light2} 0%, ${COLORS.accent.light2} 100%)`,
-    light: COLORS.primary.light4,
-    background: COLORS.white.light2,
-  },
-  vision: {
-    primary: COLORS.primary.base, // Changed to blue
-    secondary: COLORS.accent.base,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
-    light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
-  },
-  values: {
-    primary: COLORS.primary.base, // Changed to blue
-    secondary: COLORS.accent.base,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
-    light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
-  },
-  reach: {
-    primary: COLORS.primary.base, // Changed to blue
-    secondary: COLORS.accent.base,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
-    light: COLORS.primary.light4,
-    background: COLORS.lightGray, // #f5f0f0
-  },
-  discover: {
-    primary: COLORS.primary.base,
-    secondary: COLORS.accent.base,
-    gradient: `linear-gradient(135deg, ${COLORS.primary.base} 0%, ${COLORS.accent.base} 100%)`,
-    light: COLORS.primary.light4,
-    background: COLORS.white.light3,
-  },
-};
-
-/* ────────────────────── OPTIMIZED BACKGROUND GRID ────────────────────── */
-const ModernBackgroundGrid = memo(({ color = COLORS.primary.base, variant = 'default' }: { color?: string; variant?: string }) => {
-  const getOpacity = () => {
-    switch(variant) {
-      case 'light': return '08';
-      case 'medium': return '12';
-      default: return '05';
-    }
-  };
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none will-change-transform">
-      {/* Base gradient with section-specific color */}
-      <div 
-        className="absolute inset-0"
-        style={{ 
-          background: `radial-gradient(circle at 20% 50%, ${color}${getOpacity()} 0%, transparent 70%)` 
-        }}
-      />
-      
-      {/* Grid pattern with section color */}
-      <div 
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, ${color}15 1px, transparent 1px),
-            linear-gradient(to bottom, ${color}15 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-        }}
-      />
-      
-      {/* Floating orb with section color */}
-      <motion.div
-        animate={{ 
-          y: [0, -15, 0],
-          opacity: [0.1, 0.15, 0.1]
-        }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-20 right-20 w-96 h-96 rounded-full"
-        style={{
-          background: `radial-gradient(circle, ${color}20 0%, transparent 70%)`,
-        }}
-      />
+/* ────────────────────── SIMPLE LOADER ────────────────────── */
+const SimpleLoader = memo(() => (
+  <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: COLORS.primary }}>
+    <div className="text-center">
+      <div className="w-12 h-12 border-3 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-3" />
+      <p className="text-white text-sm animate-pulse">Loading...</p>
     </div>
-  );
-});
-
-ModernBackgroundGrid.displayName = 'ModernBackgroundGrid';
-
-/* ────────────────────── LOADER ────────────────────── */
-const LandingLoader = memo(() => (
-  <motion.div
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 flex items-center justify-center z-50"
-    style={{ backgroundColor: COLORS.primary.base }} // Changed to #0069B4
-  >
-    <div className="relative z-10 text-center">
-      <div 
-        className="w-12 h-12 border-3 rounded-full mx-auto animate-spin"
-        style={{ 
-          borderColor: `${COLORS.white.base}30`,
-          borderTopColor: COLORS.white.base 
-        }} 
-      />
-      <p className="text-sm font-medium text-white mt-3 animate-pulse">
-        Loading...
-      </p>
-    </div>
-  </motion.div>
+  </div>
 ));
 
-LandingLoader.displayName = 'LandingLoader';
+SimpleLoader.displayName = 'SimpleLoader';
+
+/* ────────────────────── SKELETON LOADER ────────────────────── */
+const SkeletonLoader = memo(() => (
+  <div className="min-h-screen bg-white">
+    <div className="w-full h-[60vh] bg-gray-200 animate-pulse" />
+    <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="h-8 w-48 bg-gray-200 rounded mx-auto mb-8 animate-pulse" />
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="h-64 bg-gray-200 rounded animate-pulse" />
+        <div className="h-64 bg-gray-200 rounded animate-pulse" />
+      </div>
+    </div>
+  </div>
+));
+
+SkeletonLoader.displayName = 'SkeletonLoader';
+
+/* ────────────────────── SECTION HEADER ────────────────────── */
+const SectionHeader = memo(({ title, subtitle }: { title: string; subtitle?: string }) => (
+  <div className="text-center mb-8">
+    <div className="w-12 h-0.5 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#0069B4] to-[#FF3520]" />
+    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 text-gray-900">{title}</h2>
+    {subtitle && <p className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto">{subtitle}</p>}
+  </div>
+));
+
+SectionHeader.displayName = 'SectionHeader';
 
 /* ────────────────────── HERO SECTION ────────────────────── */
 const HeroSection = memo(({ data }: { data: AboutSliderData[] }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const colors = sectionColors.hero;
 
   useEffect(() => {
-    if (!isAutoPlaying || data.length <= 1) return;
-    
+    if (data.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % data.length);
     }, SLIDE_INTERVAL);
-    
     return () => clearInterval(timer);
-  }, [data.length, isAutoPlaying]);
-
-  const handleSlideChange = useCallback((index: number) => {
-    setCurrentSlide(index);
-    setIsAutoPlaying(false);
-    setTimeout(() => setIsAutoPlaying(true), 5000);
-  }, []);
+  }, [data.length]);
 
   if (!data.length) return null;
 
   const slide = data[currentSlide];
-  const imageUrl = buildImageUrl(slide.home_img) || "";
+  const imageUrl = buildImageUrl(slide.home_img);
 
   return (
-    <section className="relative h-[60vh] min-h-[450px] w-full overflow-hidden">
-      <ModernBackgroundGrid color={colors.primary} variant="default" />
-      
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentSlide}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="absolute inset-0"
-        >
-          <img 
-            src={imageUrl} 
-            alt={slide.heading || "Hero image"} 
-            className="w-full h-full object-cover"
-            loading="eager"
-          />
-          {/* Minimal overlay to show logo/image clearly */}
-          <div 
-            className="absolute inset-0"
-            style={{ 
-              background: colors.overlay
-            }}
-          />
-        </motion.div>
-      </AnimatePresence>
-
-      <div className="relative z-20 h-full flex items-center">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-            className="max-w-2xl"
-          >
-            <motion.div 
-              variants={slideInDown}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 backdrop-blur-sm border border-white/20 mb-4"
-            >
-              <SparklesIcon className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white/90">Welcome</span>
-            </motion.div>
-
-            <motion.h1 
-              variants={slideInLeft}
-              className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg"
-            >
-              {slide.heading || "Shaping Tanzania's Media Landscape"}
-            </motion.h1>
-            
-            {slide.description && (
-              <motion.p 
-                variants={slideInRight}
-                className="text-base text-white/90 mb-6 max-w-lg line-clamp-2 drop-shadow"
-              >
-                {cleanForSEO(slide.description)}
-              </motion.p>
-            )}
-
-            <motion.div 
-              variants={slideInUp}
-              className="flex items-center gap-3"
-            >
-              <Link to="/about/journey">
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-6 py-2.5 text-white rounded-full font-medium text-sm hover:shadow-lg transition-all"
-                  style={{ backgroundColor: colors.secondary }}
-                >
-                  Discover Our Journey
-                </motion.button>
-              </Link>
-              
-              <div className="flex gap-2">
-                {data.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSlideChange(idx)}
-                    className="h-1.5 rounded-full transition-all cursor-pointer"
-                    style={{ 
-                      width: idx === currentSlide ? 28 : 8,
-                      backgroundColor: idx === currentSlide ? colors.secondary : 'rgba(255,255,255,0.5)'
-                    }}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
+    <section className="relative w-full overflow-hidden bg-black">
+      <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[75vh] overflow-hidden">
+        {/* Hero Image */}
+        <img
+          src={imageUrl}
+          alt={slide.heading || "Hero image"}
+          className="absolute top-0 left-0 w-full h-full object-cover object-top"
+          loading="eager"
+          fetchPriority="high"
+        />
+        
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-black/20" />
+        
+        {/* Content */}
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
+                <SparklesIcon className="w-3 h-3 text-yellow-300" />
+                <span className="text-xs font-medium text-white">Welcome</span>
               </div>
-            </motion.div>
-          </motion.div>
+
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 leading-tight">
+                {slide.heading || "Shaping Tanzania's Media Landscape"}
+              </h1>
+              
+              {slide.description && (
+                <p className="text-sm sm:text-base text-white/90 mb-4 max-w-lg">
+                  {cleanText(slide.description)}
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <Link to="/about/journey">
+                  <button 
+                    className="px-6 py-2.5 text-white rounded-full font-semibold text-xs sm:text-sm shadow-lg transition-transform hover:scale-105 bg-gradient-to-r from-[#0069B4] to-[#FF3520]"
+                  >
+                    Discover Our Journey
+                  </button>
+                </Link>
+                
+                <div className="flex gap-2">
+                  {data.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className="h-1.5 rounded-full transition-all cursor-pointer"
+                      style={{ 
+                        width: idx === currentSlide ? 28 : 6,
+                        backgroundColor: idx === currentSlide ? '#FF3520' : 'rgba(255,255,255,0.3)'
+                      }}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <motion.div 
-        animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="absolute z-20 bottom-4 left-1/2 -translate-x-1/2"
-      >
-        <ChevronDownIcon className="w-4 h-4 text-white/80" />
-      </motion.div>
+      {/* Scroll Indicator */}
+      <div className="absolute z-20 bottom-3 left-1/2 -translate-x-1/2">
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[8px] text-white/40 uppercase tracking-wider hidden sm:block">Scroll</span>
+          <ChevronDownIcon className="w-3 h-3 text-white/40" />
+        </div>
+      </div>
     </section>
   );
 });
@@ -438,61 +240,40 @@ HeroSection.displayName = 'HeroSection';
 
 /* ────────────────────── ABOUT SECTION ────────────────────── */
 const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) => {
-  const colors = sectionColors.about;
-
   if (!content) return null;
 
   const paragraphs = useMemo(() => 
     content.description
       .split(/\n\s*\n/)
-      .map(cleanForSEO)
+      .map(cleanText)
       .filter(Boolean)
       .slice(0, 2)
   , [content.description]);
 
   return (
-    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
-      <ModernBackgroundGrid color={colors.primary} variant="light" />
-      
+    <section className="relative overflow-hidden py-12 md:py-16 bg-gray-50">
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            variants={slideInLeft}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            className="space-y-4"
-          >
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-px" style={{ backgroundColor: colors.primary }} />
-              <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: colors.primary }}>
-                Who We Are
-              </span>
+              <div className="w-10 h-0.5 rounded-full bg-[#0069B4]" />
+              <span className="text-xs font-semibold tracking-wider uppercase text-[#0069B4]">Who We Are</span>
             </div>
             
-            <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-              {content.category}
-            </h2>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">{content.category}</h2>
             
-            <div className="space-y-3">
+            <div className="space-y-3 text-gray-600 text-sm md:text-base">
               {paragraphs.map((p, i) => (
-                <p key={i} className="text-gray-600 leading-relaxed text-base">{p}</p>
+                <p key={i}>{p}</p>
               ))}
             </div>
-          </motion.div>
+
+          
+          </div>
 
           {content.video_link && (
-            <motion.div
-              variants={slideInRight}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              className="relative"
-            >
-              <div 
-                className="relative rounded-xl overflow-hidden shadow-xl bg-black aspect-video"
-                style={{ boxShadow: `0 20px 25px -5px ${colors.primary}40` }}
-              >
+            <div className="relative">
+              <div className="relative rounded-xl overflow-hidden shadow-xl bg-black aspect-video">
                 <iframe
                   src={`${content.video_link}?autoplay=0&mute=1&controls=1`}
                   title={content.category}
@@ -501,7 +282,7 @@ const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 />
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
@@ -511,62 +292,47 @@ const AboutSection = memo(({ content }: { content: MwananchiAboutData | null }) 
 
 AboutSection.displayName = 'AboutSection';
 
-/* ────────────────────── VISION MISSION ────────────────────── */
+/* ────────────────────── VISION MISSION SECTION ────────────────────── */
 const VisionMissionSection = memo(() => {
-  const colors = sectionColors.vision;
-
-  const items = useMemo(() => [
+  const items = [
     {
       icon: EyeIcon,
       title: "Our Vision",
-      description: "To be the leading digital multimedia company in Tanzania.",
+      description: "",
+      stats: "10M+ Daily Reach",
+      color: COLORS.primary,
     },
     {
       icon: RocketLaunchIcon,
       title: "Our Mission",
-      description: "To enrich lives and empower positive change through superior media.",
+      description: "",
+      stats: "25+ Years of Impact",
+      color: COLORS.accent,
     }
-  ], []);
+  ];
 
   return (
-    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
-      <ModernBackgroundGrid color={colors.primary} variant="light" />
-      
+    <section className="relative overflow-hidden py-12 md:py-16 bg-white">
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          variants={fadeIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-            Vision & Mission
-          </h2>
-        </motion.div>
+        <SectionHeader title="Vision & Mission" />
         
         <div className="grid md:grid-cols-2 gap-6">
-          {items.map((item, index) => (
-            <motion.div
-              key={item.title}
-              variants={index === 0 ? slideInLeft : slideInRight}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg"
-              style={{ borderLeft: `4px solid ${colors.primary}` }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div 
-                  className="w-12 h-12 rounded-lg flex items-center justify-center"
-                  style={{ background: colors.gradient }}
-                >
-                  <item.icon className="w-5 h-5 text-white" />
+          {items.map((item) => (
+            <div key={item.title} className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${item.color} 0%, ${item.color}80 100%)` }}>
+                  <item.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">{item.title}</h3>
+                <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
               </div>
-              <p className="text-gray-600 text-base leading-relaxed">{item.description}</p>
-            </motion.div>
+              
+              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+              
+              <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: item.color }}>
+                <ChartBarIcon className="w-3 h-3" />
+                <span>{item.stats}</span>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -578,62 +344,37 @@ VisionMissionSection.displayName = 'VisionMissionSection';
 
 /* ────────────────────── VALUES SECTION ────────────────────── */
 const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCardClick: (v: ValueData) => void }) => {
-  const colors = sectionColors.values;
-  const icons = useMemo(() => [ShieldCheckIcon, HeartIcon, LightBulbIcon, UsersIcon], []);
+  const icons = [ShieldCheckIcon, HeartIcon, LightBulbIcon, UsersIcon];
   const displayValues = values.slice(0, 4);
 
   if (!displayValues.length) return null;
 
   return (
-    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
-      <ModernBackgroundGrid color={colors.primary} variant="light" />
-      
+    <section className="relative overflow-hidden py-12 md:py-16 bg-gray-50">
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          variants={fadeIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-            Our Values
-          </h2>
-        </motion.div>
+        <SectionHeader title="Our Core Values" />
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {displayValues.map((value, idx) => {
             const Icon = icons[idx % icons.length];
             
             return (
-              <motion.button
+              <button
                 key={value.value_id}
-                variants={scaleIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
                 onClick={() => onCardClick(value)}
                 className="text-left group"
               >
-                <div 
-                  className="bg-white/90 backdrop-blur-sm p-5 rounded-lg border shadow-md hover:shadow-lg transition-all"
-                  style={{ 
-                    borderColor: `${colors.primary}20`,
-                    borderTop: `3px solid ${colors.primary}`
-                  }}
-                >
-                  <div 
-                    className="w-12 h-12 mb-3 rounded-lg flex items-center justify-center"
-                    style={{ background: `${colors.primary}15` }}
-                  >
-                    <Icon className="w-5 h-5" style={{ color: colors.primary }} />
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                  <div className="w-12 h-12 mb-3 rounded-lg flex items-center justify-center bg-blue-50">
+                    <Icon className="w-6 h-6 text-[#0069B4]" />
                   </div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1 line-clamp-1">{value.category}</h3>
+                  
+                  <h3 className="text-base font-bold text-gray-900 mb-1">{value.category}</h3>
                   <p className="text-xs text-gray-500 line-clamp-2">
                     {truncateText(value.description || "", 50)}
                   </p>
                 </div>
-              </motion.button>
+              </button>
             );
           })}
         </div>
@@ -646,53 +387,35 @@ ValuesSection.displayName = 'ValuesSection';
 
 /* ────────────────────── REACH SECTION ────────────────────── */
 const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[] }) => {
-  const colors = sectionColors.reach;
   const displaySubs = subscriptions.slice(0, 5);
 
   if (!displaySubs.length) return null;
 
   return (
-    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
-      <ModernBackgroundGrid color={colors.primary} variant="light" />
-      
+    <section className="relative overflow-hidden py-12 md:py-16 bg-white">
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          variants={fadeIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-            Our Reach
-          </h2>
-          <p className="text-gray-600 mt-2">Connecting millions across Tanzania</p>
-        </motion.div>
-
+        <SectionHeader title="Our Reach" subtitle="" />
+        
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {displaySubs.map((sub, index) => (
-            <motion.div
-              key={sub.subscription_id}
-              variants={index % 2 === 0 ? slideInUp : slideInDown}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              className="bg-white/90 backdrop-blur-sm p-4 rounded-lg text-center shadow-md"
-              style={{ borderBottom: `3px solid ${colors.primary}` }}
-            >
-              <div className="w-14 h-14 mx-auto mb-2">
+          {displaySubs.map((sub) => (
+            <div key={sub.subscription_id} className="bg-white p-4 rounded-xl text-center border border-gray-200 shadow-sm">
+              <div className="w-16 h-16 mx-auto mb-2 p-2 rounded-lg bg-gray-50">
                 <img
-                  src={buildImageUrl(sub.logo_img_file) || ""}
+                  src={buildImageUrl(sub.logo_img_file)}
                   alt={sub.category}
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
               </div>
+              
               <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-1">{sub.category}</h3>
-              <div className="text-xl font-bold" style={{ color: colors.primary }}>
+              
+              <div className="text-lg font-bold text-[#0069B4]">
                 <CountUp end={sub.total_viewers} duration={2} separator="," />
               </div>
-            </motion.div>
+              
+              <p className="text-[10px] text-gray-400 mt-0.5">Viewers</p>
+            </div>
           ))}
         </div>
       </div>
@@ -702,54 +425,8 @@ const ReachSection = memo(({ subscriptions }: { subscriptions: SubscriptionData[
 
 ReachSection.displayName = 'ReachSection';
 
-/* ────────────────────── IMAGE MODAL ────────────────────── */
-const ImageModal = memo(({ imageUrl, title, onClose }: { imageUrl: string; title: string; onClose: () => void }) => {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 200, damping: 25 }}
-        className="relative max-w-5xl w-full z-20"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button 
-          onClick={onClose} 
-          className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
-          aria-label="Close modal"
-        >
-          <XMarkIcon className="w-6 h-6" />
-        </button>
-        <img 
-          src={imageUrl} 
-          alt={title} 
-          className="w-full h-full object-contain max-h-[80vh] rounded-lg"
-        />
-      </motion.div>
-    </motion.div>
-  );
-});
-
-ImageModal.displayName = 'ImageModal';
-
 /* ────────────────────── DISCOVER CARDS ────────────────────── */
 const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
-  const colors = sectionColors.discover;
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
   
   const getIcon = useCallback((type: string) => {
@@ -761,107 +438,107 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
     }
   }, []);
 
+  const getTypeColor = useCallback((type: string) => {
+    switch(type) {
+      case "Brand": return COLORS.primary;
+      case "News": return COLORS.success;
+      case "Events": return COLORS.accent;
+      default: return COLORS.primary;
+    }
+  }, []);
+
   const displayCards = cards.slice(0, 3);
 
   if (!displayCards.length) return null;
 
   return (
-    <section className="relative overflow-hidden py-16" style={{ backgroundColor: colors.background }}>
-      <ModernBackgroundGrid color={colors.primary} variant="light" />
-      
+    <section className="relative overflow-hidden py-12 md:py-16 bg-gray-50">
+      {/* Image Modal */}
       <AnimatePresence>
         {selectedImage && (
-          <ImageModal
-            imageUrl={selectedImage.url}
-            title={selectedImage.title}
-            onClose={() => setSelectedImage(null)}
-          />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50"
+            onClick={() => setSelectedImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative max-w-4xl w-full"
+            >
+              <button 
+                onClick={() => setSelectedImage(null)} 
+                className="absolute -top-10 right-0 text-white/70 hover:text-white"
+                aria-label="Close modal"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+              <img 
+                src={selectedImage.url} 
+                alt={selectedImage.title} 
+                className="w-full h-full object-contain max-h-[80vh]" 
+              />
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          variants={fadeIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold" style={{ color: colors.primary }}>
-            Discover More
-          </h2>
-          <p className="text-gray-600 mt-2">Explore our latest stories and updates</p>
-        </motion.div>
+        <SectionHeader title="Discover More" subtitle="Explore our latest stories" />
         
         <div className="grid md:grid-cols-3 gap-6">
-          {displayCards.map((card, index) => {
+          {displayCards.map((card) => {
             const Icon = getIcon(card.type);
-            const imageUrl = buildImageUrl(card.imageUrl) || "";
+            const imageUrl = buildImageUrl(card.imageUrl);
+            const typeColor = getTypeColor(card.type);
             
             return (
-              <motion.div
-                key={`${card.type}-${card.id}`}
-                variants={index === 0 ? slideInLeft : index === 1 ? slideInUp : slideInRight}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg"
-                style={{ borderRight: `3px solid ${colors.primary}` }}
-              >
-                <div className="relative h-48 bg-gray-100 overflow-hidden">
-                  <img
-                    src={imageUrl}
-                    alt={card.title}
-                    className="w-full h-full object-cover cursor-pointer transition-transform duration-300 hover:scale-110"
-                    onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
-                    loading="lazy"
-                  />
-                  
-                  <div className="absolute bottom-2 left-2">
-                    <div 
-                      className="px-2 py-1 backdrop-blur-sm rounded text-xs font-semibold flex items-center gap-1"
-                      style={{ backgroundColor: `${colors.primary}E6`, color: 'white' }}
-                    >
-                      <Icon className="w-3 h-3 text-white" />
-                      <span>{card.type}</span>
+              <div key={`${card.type}-${card.id}`} className="group">
+                <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col h-full border-b-4" style={{ borderBottomColor: typeColor }}>
+                  <div className="relative w-full h-36 md:h-40 bg-gray-100 overflow-hidden">
+                    <img
+                      src={imageUrl}
+                      alt={card.title}
+                      className="absolute bottom-0 left-0 w-full h-full object-contain object-bottom cursor-pointer transition-transform hover:scale-105"
+                      onClick={() => setSelectedImage({ url: imageUrl, title: card.title })}
+                      loading="lazy"
+                    />
+                    
+                    <div className="absolute bottom-2 left-2 z-10">
+                      <div className="px-2 py-1 backdrop-blur-sm rounded-full text-[10px] font-semibold flex items-center gap-1 shadow-md text-white" style={{ backgroundColor: `${typeColor}E6` }}>
+                        <Icon className="w-3 h-3" />
+                        <span>{card.type}</span>
+                      </div>
                     </div>
                   </div>
+                  
+                  <div className="p-4">
+                    <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">{card.title}</h3>
+                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{card.description}</p>
+                    
+                    <Link to={card.linkUrl} className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: typeColor }}>
+                      Learn More
+                      <ArrowRightIcon className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
-                
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{card.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
-                  <Link 
-                    to={card.linkUrl} 
-                    className="inline-flex items-center gap-1 text-sm font-semibold group"
-                    style={{ color: colors.primary }}
-                  >
-                    Learn More 
-                    <ArrowRightIcon className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
 
         {cards.length > 3 && (
-          <motion.div 
-            variants={fadeIn}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-center mt-12"
-          >
-            <Link 
-              to="/discover-more" 
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm border-2 transition-all hover:shadow-md hover:scale-105"
-              style={{ borderColor: colors.primary, color: colors.primary }}
-            >
-              View All Stories
-              <ArrowRightIcon className="w-3.5 h-3.5" />
+          <div className="text-center mt-8">
+            <Link to="/discover-more">
+              <button className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-xs text-white shadow-md bg-gradient-to-r from-[#0069B4] to-[#FF3520]">
+                View All Stories
+                <ArrowRightIcon className="w-3 h-3" />
+              </button>
             </Link>
-          </motion.div>
+          </div>
         )}
       </div>
     </section>
@@ -872,14 +549,16 @@ DiscoverCards.displayName = 'DiscoverCards';
 
 /* ────────────────────── VALUE MODAL ────────────────────── */
 const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => void }) => {
-  const colors = sectionColors.values;
-
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
   }, [onClose]);
 
   return (
@@ -887,40 +566,34 @@ const ValueModal = memo(({ value, onClose }: { value: ValueData; onClose: () => 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, y: 10 }}
+        initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: -10 }}
-        transition={{ type: "spring", stiffness: 200, damping: 25 }}
-        className="bg-white/95 backdrop-blur-sm rounded-xl max-w-md w-full p-6 shadow-xl relative z-20"
+        exit={{ scale: 0.9, y: -20 }}
+        className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
-        style={{ boxShadow: `0 25px 50px -12px ${colors.primary}60` }}
       >
         <button 
           onClick={onClose} 
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
           aria-label="Close modal"
         >
-          <XMarkIcon className="w-5 h-5" />
+          <XMarkIcon className="w-4 h-4" />
         </button>
 
         <div className="text-center">
-          <div 
-            className="w-16 h-16 mx-auto mb-3 rounded-lg flex items-center justify-center p-3"
-            style={{ background: `${colors.primary}15` }}
-          >
-            <img
-              src={buildImageUrl(value.img_file) || ""}
-              alt={value.category}
-              className="w-full h-full object-contain"
+          <div className="w-20 h-20 mx-auto mb-3 rounded-xl flex items-center justify-center p-3 bg-gray-50">
+            <img 
+              src={buildImageUrl(value.img_file)} 
+              alt={value.category} 
+              className="w-full h-full object-contain" 
             />
           </div>
-          <h3 className="text-xl font-bold mb-2" style={{ color: colors.primary }}>
-            {value.category}
-          </h3>
+          
+          <h3 className="text-xl font-bold mb-2 text-[#0069B4]">{value.category}</h3>
           <p className="text-sm text-gray-600">{value.description}</p>
         </div>
       </motion.div>
@@ -947,7 +620,7 @@ const AboutFTSection = () => {
 
     const loadData = async () => {
       try {
-        const [hero, subs, about, vals, brand, news, event] = await Promise.allSettled([
+        const [hero, subs, about, vals, brand, news, event] = await Promise.all([
           axiosInstance.get("/api/slider-imgs", { signal: controller.signal }),
           axiosInstance.get("/api/allsubscriptions", { signal: controller.signal }),
           axiosInstance.get("/api/about-mwananchi/all", { signal: controller.signal }),
@@ -959,53 +632,42 @@ const AboutFTSection = () => {
 
         if (!mounted) return;
 
-        if (hero.status === "fulfilled" && hero.value.data) {
-          setSliderData(hero.value.data || []);
-        }
-
-        if (subs.status === "fulfilled" && subs.value.data?.data) {
-          setSubscriptions(subs.value.data.data || []);
-        }
-
-        if (about.status === "fulfilled" && about.value.data?.records?.[0]) {
-          setAboutContent(about.value.data.records[0]);
-        }
-
-        if (vals.status === "fulfilled" && vals.value.data?.values) {
-          setValues(vals.value.data.values || []);
-        }
+        setSliderData(hero.data || []);
+        setSubscriptions(subs.data?.data || []);
+        setAboutContent(about.data?.records?.[0] || null);
+        setValues(vals.data?.values || []);
 
         const cardItems: AboutCardData[] = [];
         
-        if (brand.status === "fulfilled" && brand.value.data?.brand_id) {
+        if (brand.data?.brand_id) {
           cardItems.push({
-            id: brand.value.data.brand_id,
+            id: brand.data.brand_id,
             type: "Brand",
-            title: brand.value.data.category || "Brand",
-            description: cleanForSEO(brand.value.data.description || ""),
-            imageUrl: brand.value.data.brand_img || null,
+            title: brand.data.category || "Brand",
+            description: cleanText(brand.data.description || ""),
+            imageUrl: brand.data.brand_img || null,
             linkUrl: "/our-brands",
           });
         }
 
-        if (news.status === "fulfilled" && news.value.data?.news?.news_id) {
+        if (news.data?.news?.news_id) {
           cardItems.push({
-            id: news.value.data.news.news_id,
+            id: news.data.news.news_id,
             type: "News",
-            title: news.value.data.news.category || "News",
-            description: stripHtml(news.value.data.news.description || ""),
-            imageUrl: news.value.data.news.news_img || null,
+            title: news.data.news.category || "News",
+            description: stripHtml(news.data.news.description || ""),
+            imageUrl: news.data.news.news_img || null,
             linkUrl: "/company/news",
           });
         }
 
-        if (event.status === "fulfilled" && event.value.data?.event?.event_id) {
+        if (event.data?.event?.event_id) {
           cardItems.push({
-            id: event.value.data.event.event_id,
+            id: event.data.event.event_id,
             type: "Events",
-            title: event.value.data.event.event_category || "Event",
-            description: cleanForSEO(event.value.data.event.description || ""),
-            imageUrl: event.value.data.event.img_file || null,
+            title: event.data.event.event_category || "Event",
+            description: cleanText(event.data.event.description || ""),
+            imageUrl: event.data.event.img_file || null,
             linkUrl: "/all-events",
           });
         }
@@ -1014,13 +676,17 @@ const AboutFTSection = () => {
         setError(null);
       } catch (err) {
         if (!mounted) return;
-        if (err instanceof Error && err.name !== 'CanceledError') {
-          console.error("Error loading data:", err);
-          setError("Failed to load content. Please refresh the page.");
+        
+        // Check if it's an axios cancel error
+        if (err && typeof err === 'object' && 'code' in err && err.code === 'ERR_CANCELED') {
+          return; // Request was cancelled, ignore
         }
+        
+        console.error("Error loading data:", err);
+        setError("Unable to load content. Please check your connection.");
       } finally {
         if (mounted) {
-          setTimeout(() => setIsLoading(false), LOADING_DELAY);
+          setIsLoading(false);
         }
       }
     };
@@ -1041,15 +707,15 @@ const AboutFTSection = () => {
     setSelectedValue(null);
   }, []);
 
+  // Error State
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center bg-white p-6 rounded-xl shadow-md max-w-sm">
+          <p className="text-red-500 mb-3 text-sm">{error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-4 py-2 text-white rounded-lg transition-colors"
-            style={{ backgroundColor: COLORS.primary.base }}
+            className="px-5 py-2 text-white rounded-lg text-sm bg-[#0069B4] hover:bg-[#005A9B] transition-colors"
           >
             Refresh Page
           </button>
@@ -1059,24 +725,21 @@ const AboutFTSection = () => {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="min-h-screen bg-white relative"
-    >
+    <div className="min-h-screen bg-white relative">
       <ToastContainer 
-        position="top-right" 
-        theme="colored" 
+        position="top-right"
         autoClose={3000}
         hideProgressBar
         newestOnTop
         closeOnClick
         pauseOnFocusLoss={false}
+        draggable={false}
+        pauseOnHover={false}
+        theme="colored"
       />
       
       <AnimatePresence mode="wait">
-        {isLoading && <LandingLoader />}
+        {isLoading && <SimpleLoader />}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1085,13 +748,17 @@ const AboutFTSection = () => {
         )}
       </AnimatePresence>
 
-      {!isLoading && (
-        <div className="relative z-20">
+      {!isLoading ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
           <Helmet>
             <title>About Us | Leading Media Company in Tanzania</title>
             <meta 
               name="description" 
-              content={aboutContent ? cleanForSEO(aboutContent.description).slice(0, 155) : "Leading digital multimedia company in Tanzania"} 
+              content={aboutContent ? cleanText(aboutContent.description).slice(0, 155) : "Leading digital multimedia company in Tanzania"} 
             />
             <meta name="keywords" content="media, tanzania, digital, multimedia, news, brands" />
             <meta property="og:title" content="About Us | Leading Media Company in Tanzania" />
@@ -1109,10 +776,14 @@ const AboutFTSection = () => {
             <DiscoverCards cards={cards} />
           </main>
           
-          <Footer />
-        </div>
+          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
+            <Footer />
+          </Suspense>
+        </motion.div>
+      ) : (
+        <SkeletonLoader />
       )}
-    </motion.div>
+    </div>
   );
 };
 
