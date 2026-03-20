@@ -866,9 +866,8 @@ const ValuesSection = memo(({ values, onCardClick }: { values: ValueData[]; onCa
 });
 
 ValuesSection.displayName = 'ValuesSection';
-
 /* ============================================================
-   SECTION 5: DISCOVER STORIES - WHITE CARDS ON DARK BACKGROUND
+   SECTION 5: DISCOVER STORIES 
    ============================================================ */
 const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
@@ -968,9 +967,9 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
           </motion.p>
         </motion.div>
         
-        {/* Modern Card Grid Layout - WHITE CARDS */}
+        {/* Modern Card Grid Layout - WHITE CARDS WITH FULL IMAGES */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Featured Card - White Card */}
+          {/* Featured Card - White Card with FULL IMAGE */}
           {displayCards[0] && (
             <motion.div
               initial={{ opacity: 0, x: -50, scale: 0.95 }}
@@ -979,12 +978,13 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
               whileHover={{ y: -10, scale: 1.02 }}
               className="group relative overflow-hidden rounded-3xl shadow-2xl bg-white"
             >
-              <div className="relative h-[500px] overflow-hidden">
+              <div className="relative h-[500px] overflow-hidden bg-gray-100">
+                {/* FIX: Use object-contain to show full image from bottom to top */}
                 <motion.img
                   src={buildImageUrl(displayCards[0].imageUrl)}
                   alt={displayCards[0].title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  whileHover={{ scale: 1.1 }}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  whileHover={{ scale: 1.05 }}
                   transition={{ duration: 0.6 }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
@@ -1046,7 +1046,7 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
             </motion.div>
           )}
           
-          {/* Right side cards - White Cards */}
+          {/* Right side cards - White Cards with FULL IMAGES */}
           <div className="space-y-8">
             {displayCards.slice(1, 3).map((card, idx) => {
               const Icon = getIcon(card.type);
@@ -1061,11 +1061,12 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                 >
                   <div className="flex flex-col md:flex-row">
                     <div className="relative md:w-2/5 h-48 md:h-auto overflow-hidden bg-gray-100">
+                      {/* FIX: Use object-contain to show full image from bottom to top */}
                       <motion.img
                         src={buildImageUrl(card.imageUrl)}
                         alt={card.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        whileHover={{ scale: 1.1 }}
+                        className="absolute inset-0 w-full h-full object-contain bg-gray-100"
+                        whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.5 }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent md:bg-gradient-to-r" />
@@ -1102,7 +1103,7 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
           </div>
         </div>
         
-        {/* Bottom Row Cards - White Cards */}
+        {/* Bottom Row Cards - White Cards with FULL IMAGES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {displayCards.slice(3, 6).map((card, idx) => {
             const Icon = getIcon(card.type);
@@ -1122,11 +1123,12 @@ const DiscoverCards = memo(({ cards }: { cards: AboutCardData[] }) => {
                   className="relative rounded-2xl overflow-hidden shadow-xl bg-white border border-gray-100"
                 >
                   <div className="relative h-56 overflow-hidden bg-gray-100">
+                    {/* FIX: Use object-contain to show full image from bottom to top */}
                     <motion.img
                       src={buildImageUrl(card.imageUrl)}
                       alt={card.title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      whileHover={{ scale: 1.15 }}
+                      className="absolute inset-0 w-full h-full object-contain bg-gray-100"
+                      whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.5 }}
                       onClick={() => setSelectedImage({ url: buildImageUrl(card.imageUrl), title: card.title })}
                     />
