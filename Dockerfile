@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve the app using 'serve'
-FROM node:20-alpine
+FROM node:20-alpine         
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=build /app/dist ./dist
