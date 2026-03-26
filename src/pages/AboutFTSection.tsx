@@ -36,6 +36,10 @@ const AboutFTSection = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+        <Helmet>
+          <title>Error | Tanzania's Leading Media Company - Mwananchi Communications</title>
+          <meta name="description" content="Page temporarily unavailable. Please refresh or try again later." />
+        </Helmet>
         <div className="text-center bg-white/10 backdrop-blur-lg p-10 rounded-3xl shadow-2xl max-w-md">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,15 +89,48 @@ const AboutFTSection = () => {
           transition={{ duration: 0.5 }}
         >
           <Helmet>
-            <title>About Us | Mwananchi Communications - Leading Media Company in Tanzania</title>
+            {/* Primary SEO Title - Updated for better performance */}
+            <title>Tanzania's Leading Media Company | About Mwananchi Communications</title>
+            
+            {/* Meta Description */}
             <meta 
               name="description" 
-              content={aboutContent ? aboutContent.description.slice(0, 155) : "Leading digital multimedia company in Tanzania, shaping the future of media with innovation and integrity."} 
+              content={aboutContent ? aboutContent.description.slice(0, 155) : "Tanzania's leading digital multimedia company delivering trusted news, innovative media solutions, and exceptional content across all platforms. Discover our story, mission, and values."} 
             />
-            <meta name="keywords" content="media, tanzania, digital, multimedia, news, brands, mwananchi, communication" />
-            <meta property="og:title" content="About Us | Mwananchi Communications" />
+            
+            {/* Keywords */}
+            <meta 
+              name="keywords" 
+              content="leading media company Tanzania, Mwananchi Communications, digital media Tanzania, Tanzanian news, multimedia company, East African media, media house Tanzania, best media company Tanzania" 
+            />
+            
+            {/* Canonical URL */}
+            <link rel="canonical" href={window.location.href} />
+            
+            {/* Open Graph / Facebook */}
             <meta property="og:type" content="website" />
+            <meta property="og:title" content="Tanzania's Leading Media Company | About Mwananchi Communications" />
+            <meta property="og:description" content={aboutContent ? aboutContent.description.slice(0, 155) : "Tanzania's leading digital multimedia company delivering trusted news, innovative media solutions, and exceptional content."} />
             <meta property="og:url" content={window.location.href} />
+            <meta property="og:site_name" content="Mwananchi Communications" />
+            <meta property="og:locale" content="en_TZ" />
+            
+            {/* Twitter Card */}
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content="Tanzania's Leading Media Company | About Mwananchi Communications" />
+            <meta name="twitter:description" content={aboutContent ? aboutContent.description.slice(0, 155) : "Tanzania's leading digital multimedia company delivering trusted news and innovative media solutions."} />
+            
+            {/* Additional SEO Meta Tags */}
+            <meta name="author" content="Mwananchi Communications" />
+            <meta name="robots" content="index, follow" />
+            <meta name="googlebot" content="index, follow" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            
+            {/* Geo Tags */}
+            <meta name="geo.region" content="TZ" />
+            <meta name="geo.placename" content="Dar es Salaam" />
+            <meta name="geo.position" content="-6.792354;39.208328" />
+            <meta name="ICBM" content="-6.792354, 39.208328" />
           </Helmet>
 
           <HeroSection data={sliderData} subscriptions={subscriptions} />
@@ -110,7 +147,11 @@ const AboutFTSection = () => {
           </Suspense>
         </motion.div>
       ) : (
-        <div className="min-h-screen bg-gray-100 animate-pulse" />
+        <div className="min-h-screen bg-gray-100 animate-pulse">
+          <Helmet>
+            <title>Loading... | Tanzania's Leading Media Company - Mwananchi Communications</title>
+          </Helmet>
+        </div>
       )}
     </div>
   );

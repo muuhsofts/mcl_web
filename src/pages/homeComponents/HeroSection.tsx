@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo, useCallback } from "react";
+import { memo, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import CountUp from "react-countup";
@@ -18,14 +18,17 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [imagesLoaded, setImagesLoaded] = useState<boolean[]>([]);
+  const [activeCard, setActiveCard] = useState<number | null>(null);
+
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 100, damping: 30 });
   const springY = useSpring(mouseY, { stiffness: 100, damping: 30 });
+  const cardsContainerRef = useRef<HTMLDivElement>(null);
 
   const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
 
-  // Preload images for faster loading
+  // Preload images
   useEffect(() => {
     if (!data.length) return;
     
@@ -55,6 +58,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
     Promise.all(loadPromises);
   }, [data, baseURL]);
 
+  // Auto-slide
   useEffect(() => {
     if (!isAutoPlaying || data.length <= 1) return;
     const timer = setInterval(() => {
@@ -75,7 +79,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
 
   const slide = data[currentSlide];
   const imageUrl = buildImageUrl(slide.home_img, baseURL);
-  const displaySubs = subscriptions.slice(0, 8);
+  const displaySubs = subscriptions.slice(0, 12);
   const isCurrentImageLoaded = imagesLoaded[currentSlide];
 
   const particles = useMemo(() => {
@@ -90,7 +94,8 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
   }, []);
 
   return (
-    <section className="relative w-full overflow-hidden bg-gradient-to-br from-[#007aff] to-[#FF3520]">
+    <section className="relative w-full overflow-hidden bg-white">
+      {/* Hero Slider */}
       <div 
         className="relative w-full h-[85vh] md:h-[95vh] overflow-hidden"
         onMouseMove={handleMouseMove}
@@ -100,7 +105,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
         {/* Background Image */}
         <div className="absolute inset-0">
           {!isCurrentImageLoaded && (
-            <div className="absolute inset-0 bg-gradient-to-br from-[#007aff] to-[#FF3520] animate-pulse" />
+            <div className="absolute inset-0 bg-gray-100 animate-pulse" />
           )}
           <motion.img
             src={imageUrl}
@@ -125,15 +130,15 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
           />
         </div>
 
-        {/* Simple Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/20" />
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-black/20" />
 
-        {/* Simple Floating Particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+        {/* Particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
           {particles.map((particle) => (
             <motion.div
               key={particle.id}
-              className="absolute rounded-full bg-white/30"
+              className="absolute rounded-full bg-white/40"
               style={{
                 width: particle.size,
                 height: particle.size,
@@ -143,7 +148,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
               animate={{
                 y: [0, -20, 0],
                 x: [0, 10, 0],
-                opacity: [0.2, 0.5, 0.2],
+                opacity: [0.2, 0.6, 0.2],
               }}
               transition={{
                 duration: particle.duration,
@@ -155,7 +160,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
           ))}
         </div>
 
-        {/* Content */}
+        {/* Hero Content */}
         <div className="absolute inset-0 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
@@ -200,7 +205,6 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                   </motion.button>
                 </Link>
                 
-                {/* Slide Indicators */}
                 <div className="flex gap-2">
                   {data.map((_, idx) => (
                     <button
@@ -224,58 +228,90 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
         </div>
       </div>
 
-      {/* Digital Reach Cards - With Fixed Width/Height */}
+      {/* Subscription Cards - Tightly attached + Stronger Shadow */}
       {displaySubs.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="relative -mt-20 md:-mt-28 z-30 pb-16"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'thin' }}>
-              <div className="flex gap-4 min-w-max lg:grid lg:grid-cols-8 lg:gap-5">
+        <div className="relative z-30 bg-white -mt-px">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-12 md:pb-16">
+            <div 
+              ref={cardsContainerRef}
+              className="overflow-x-auto scroll-smooth pb-6 hide-scrollbar"
+            >
+              <div className="flex gap-6 lg:gap-8 min-w-max">
                 {displaySubs.map((sub, idx) => (
                   <motion.div
                     key={sub.subscription_id}
-                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.6 + idx * 0.03 }}
-                    whileHover={{ y: -8, scale: 1.02 }}
-                    className="w-[200px] lg:w-auto flex-shrink-0"
+                    whileHover={{ y: -8 }}
+                    onHoverStart={() => setActiveCard(idx)}
+                    onHoverEnd={() => setActiveCard(null)}
+                    className="flex-shrink-0 w-full max-w-[325px] lg:max-w-[295px] xl:max-w-[285px]"
                   >
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl p-5 text-center shadow-lg hover:shadow-xl transition-all duration-300 h-full border border-white/20">
-                      {/* Fixed size container for image - ENLARGED */}
-                      <div className="w-24 h-24 mx-auto mb-3 p-3 rounded-xl bg-gradient-to-br from-[#007aff]/10 to-[#FF3520]/10 flex items-center justify-center">
-                        <img
-                          src={buildImageUrl(sub.logo_img_file, baseURL)}
-                          alt={sub.category}
-                          width="96"
-                          height="96"
-                          className="w-full h-full object-contain"
-                          loading="lazy"
-                          style={{ width: '96px', height: '96px' }}
-                        />
-                      </div>
-                      
-                      {/* Fixed height for title */}
-                      <h3 className="text-sm font-bold text-gray-800 mb-2 line-clamp-1 font-sans min-h-[44px] flex items-center justify-center">
-                        {sub.category}
-                      </h3>
-                      
-                      {/* Fixed height for counter */}
-                      <div className="min-h-[44px] flex items-center justify-center">
-                        <div className="text-xl md:text-2xl font-black bg-gradient-to-r from-[#007aff] to-[#FF3520] bg-clip-text text-transparent font-sans">
-                          <CountUp end={sub.total_viewers} duration={2} separator="," />K
+                    <motion.div 
+                      className="relative bg-[#f8f9fa] rounded-3xl overflow-hidden h-full border border-gray-100"
+                      animate={{
+                        boxShadow: activeCard === idx 
+                          ? "0 40px 90px -20px rgba(0, 0, 0, 0.28)" 
+                          : "0 25px 60px -15px rgba(0, 0, 0, 0.22)"
+                      }}
+                      whileHover={{
+                        boxShadow: "0 45px 100px -15px rgba(0, 0, 0, 0.35)",
+                        y: -8
+                      }}
+                    >
+                      <div className="p-8 text-center">
+                        {/* Logo */}
+                        <div className="relative w-36 h-36 mx-auto mb-6">
+                          <div className="absolute inset-0 rounded-2xl bg-white/80 blur-2xl" />
+                          <div className="relative w-full h-full p-4 bg-white rounded-2xl shadow-inner flex items-center justify-center border border-gray-50">
+                            <img
+                              src={buildImageUrl(sub.logo_img_file, baseURL)}
+                              alt={sub.category}
+                              width="130"
+                              height="130"
+                              className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
+                              loading="lazy"
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Category */}
+                        <h3 className="text-xl font-bold text-gray-800 mb-5 line-clamp-2 min-h-[60px] flex items-center justify-center font-sans">
+                          {sub.category}
+                        </h3>
+                        
+                        {/* Viewers */}
+                        <div>
+                          <div className="text-4xl font-black bg-gradient-to-r from-[#007aff] to-[#FF3520] bg-clip-text text-transparent font-sans tracking-tighter">
+                            <CountUp 
+                              end={sub.total_viewers} 
+                              duration={2.2} 
+                              separator="," 
+                              decimals={0}
+                            />
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1 font-medium"></p>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   </motion.div>
                 ))}
               </div>
             </div>
+
+            {/* Mobile Scroll Hint */}
+            <div className="lg:hidden flex justify-center mt-8">
+              <motion.div
+                animate={{ x: [0, 10, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className="text-xs text-gray-400 flex items-center gap-2"
+              >
+                Scroll to see all platforms →
+              </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Scroll Indicator */}
@@ -289,12 +325,10 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
           className="flex flex-col items-center gap-1 cursor-pointer"
-          onClick={() => {
-            window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
-          }}
+          onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
         >
-          <span className="text-xs text-white/70 uppercase tracking-wider font-sans">Explore</span>
-          <ChevronDownIcon className="w-4 h-4 text-white/70" />
+          <span className="text-xs text-white/80 uppercase tracking-wider font-sans">Explore</span>
+          <ChevronDownIcon className="w-4 h-4 text-white/80" />
         </motion.div>
       </motion.div>
     </section>
