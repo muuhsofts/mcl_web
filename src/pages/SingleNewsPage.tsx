@@ -8,8 +8,11 @@ import {
   ChevronLeftIcon,
   CalendarDaysIcon,
   ShareIcon,
+  ArrowRightIcon,
+  ClockIcon,
+  PhotoIcon,
 } from "@heroicons/react/24/outline";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
 import DOMPurify from "dompurify";
@@ -22,13 +25,21 @@ interface NewsData {
   description: string | null;
   news_img: string | null;
   pdf_file: string | null;
-  read_more_url_lnk: string | null; // ← Added
+  read_more_url_lnk: string | null;
   created_at: string;
   updated_at?: string;
 }
 
+interface RelatedNews {
+  news_id: number;
+  category: string;
+  news_img: string | null;
+  created_at: string;
+}
+
 interface ApiResponse {
   news: NewsData;
+  related_news?: RelatedNews[];
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -39,17 +50,24 @@ const formatDate = (dateString: string): string =>
     year: "numeric",
   });
 
+const getRelativeTime = (date: string): string => {
+  const now = new Date();
+  const newsDate = new Date(date);
+  const diffDays = Math.floor((now.getTime() - newsDate.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
+};
+
 const getFullMediaUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
   const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
   return `${baseURL}/${path.replace(/^\//, "")}`;
 };
 
-/**
- * Unescapes HTML entities to convert escaped HTML to raw HTML.
- * @param text The input text with potential HTML entities.
- * @returns The unescaped text.
- */
 const unescapeHtml = (text: string | null): string | null => {
   if (!text) return null;
   return text
@@ -59,18 +77,10 @@ const unescapeHtml = (text: string | null): string | null => {
     .replace(/&amp;/g, "&");
 };
 
-/**
- * Parses description to extract text and iframe(s).
- * @param description The input description (HTML or plain text).
- * @returns An object with sanitized text and iframe src(s).
- */
 const parseDescription = (description: string | null) => {
   if (!description) return { text: "<p class='mb-4'>No details available.</p>", iframeSrcs: [] };
 
-  // Unescape HTML entities
   const unescapedDescription = unescapeHtml(description);
-
-  // Sanitize with DOMPurify
   const sanitizedDescription = DOMPurify.sanitize(unescapedDescription || "", {
     ALLOWED_TAGS: ["p", "strong", "em", "ul", "li", "a", "iframe", "span", "div", "br", "ol", "blockquote"],
     ALLOWED_ATTR: [
@@ -90,7 +100,6 @@ const parseDescription = (description: string | null) => {
     ADD_ATTR: ["allow", "allowfullscreen", "referrerpolicy"],
   });
 
-  // Parse to extract iframes
   const parser = new DOMParser();
   const doc = parser.parseFromString(sanitizedDescription, "text/html");
   const iframes = doc.querySelectorAll("iframe");
@@ -98,7 +107,6 @@ const parseDescription = (description: string | null) => {
     .map((iframe) => iframe.src)
     .filter((src) => src && /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.+$/.test(src));
 
-  // Remove iframes from text
   let text = sanitizedDescription;
   iframes.forEach((iframe) => {
     text = text.replace(iframe.outerHTML, "").trim();
@@ -107,25 +115,6 @@ const parseDescription = (description: string | null) => {
 
   return { text, iframeSrcs };
 };
-
-// --- LOADER COMPONENT ---
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-      className="mb-4"
-    >
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <h2 className="text-2xl font-bold text-white tracking-wider">Loading News...</h2>
-  </motion.div>
-);
 
 // --- SHARE BUTTON COMPONENT ---
 const ShareButton: React.FC<{
@@ -187,7 +176,7 @@ const ShareButton: React.FC<{
   return (
     <button
       onClick={handleShare}
-      className="flex items-center px-4 py-2 bg-[#0A51A1] text-white rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
+      className="flex items-center px-4 py-2 bg-[#ed1c24] text-white rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
       aria-label="Share this article"
     >
       <ShareIcon className="w-5 h-5 mr-2" />
@@ -196,10 +185,49 @@ const ShareButton: React.FC<{
   );
 };
 
+// --- RELATED NEWS CARD (HORIZONTAL) ---
+const RelatedNewsCard: React.FC<{ news: RelatedNews }> = ({ news }) => {
+  const navigate = useNavigate();
+  const imageUrl = getFullMediaUrl(news.news_img);
+
+  return (
+    <motion.div
+      whileHover={{ x: 5 }}
+      onClick={() => navigate(`/readmore-news/${news.news_id}`)}
+      className="group cursor-pointer bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-row items-center gap-4 p-3 border border-gray-100"
+    >
+      <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={news.category}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <PhotoIcon className="w-8 h-8 text-gray-400" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-semibold text-[#003459] group-hover:text-[#0072bc] transition-colors line-clamp-2">
+          {news.category}
+        </h4>
+        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+          <CalendarDaysIcon className="w-3 h-3" />
+          <span>{formatDate(news.created_at)}</span>
+        </div>
+      </div>
+      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-[#ed1c24] transition-colors flex-shrink-0" />
+    </motion.div>
+  );
+};
+
 // --- SINGLE NEWS PAGE ---
 const SingleNewsPage: React.FC = () => {
   const { news_id } = useParams<{ news_id: string }>();
   const [news, setNews] = useState<NewsData | null>(null);
+  const [relatedNews, setRelatedNews] = useState<RelatedNews[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -216,8 +244,8 @@ const SingleNewsPage: React.FC = () => {
     setError(null);
     try {
       const response = await axiosInstance.get<ApiResponse>(`/api/readmore-news/${news_id}`);
-      console.log("SingleNews API Response:", response.data);
       setNews(response.data.news);
+      setRelatedNews(response.data.related_news || []);
     } catch (err) {
       setError("Failed to fetch news article.");
       toast.error("Error fetching news article.");
@@ -247,16 +275,7 @@ const SingleNewsPage: React.FC = () => {
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
             className="w-full h-full"
-            onError={() => toast.error("Failed to load video.")}
           />
-          <a
-            href={iframeSrcs[0]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline text-sm mt-2 inline-block"
-          >
-            Watch video externally
-          </a>
         </motion.div>
       );
     }
@@ -264,7 +283,14 @@ const SingleNewsPage: React.FC = () => {
   };
 
   if (isLoading) {
-    return <Loader />;
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-50">
+        <div className="flex flex-col items-center">
+          <ArrowPathIcon className="w-12 h-12 text-[#0072bc] animate-spin" />
+          <p className="mt-4 text-gray-500">Loading article...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error || !news) {
@@ -275,7 +301,7 @@ const SingleNewsPage: React.FC = () => {
         <p className="mt-2 text-gray-600">{error || "News article not found."}</p>
         <button
           onClick={() => navigate("/company/news")}
-          className="mt-6 px-6 py-2 bg-[#0A51A1] text-white font-semibold rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
+          className="mt-6 px-6 py-2 bg-[#003459] text-white font-semibold rounded-lg shadow-md hover:bg-[#0072bc] transition-all duration-300"
         >
           Back to News
         </button>
@@ -287,8 +313,6 @@ const SingleNewsPage: React.FC = () => {
   const imageUrl = getFullMediaUrl(news.news_img);
   const pdfUrl = getFullMediaUrl(news.pdf_file);
   const currentUrl = window.location.href;
-
-  // Normalize read_more_url_lnk
   const readMoreUrl = news.read_more_url_lnk && news.read_more_url_lnk !== "null" && news.read_more_url_lnk.trim()
     ? news.read_more_url_lnk.trim()
     : null;
@@ -296,154 +320,176 @@ const SingleNewsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
-      <main className="flex-grow">
-        <section className="py-12 lg:py-16 bg-gray-50">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2">
-              {/* Back Button */}
-              <motion.button
-                onClick={() => navigate("/company/news")}
-                className="mb-8 flex items-center text-[#003459] hover:text-[#0A51A1] font-semibold text-lg rounded-lg transition-all duration-300"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                aria-label="Back to news list"
-              >
-                <ChevronLeftIcon className="w-6 h-6 mr-2" />
-                Back to News
-              </motion.button>
+      
+      <header className="bg-[#003459] text-white py-4 shadow-lg sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h1 className="text-xl font-bold tracking-wide">MCL Newsroom</h1>
+        </div>
+      </header>
 
-              {/* Content Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 hover:shadow-xl transition-all duration-300"
-              >
-                {/* Title with ref for screenshot */}
-                <motion.h1
-                  ref={categoryRef}
+      <main className="flex-grow">
+        <section className="py-8 md:py-12">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Back Button */}
+            <motion.button
+              onClick={() => navigate("/company/news")}
+              className="mb-6 flex items-center text-[#003459] hover:text-[#0072bc] font-semibold transition-all duration-300 group"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <ChevronLeftIcon className="w-5 h-5 mr-1 transition-transform group-hover:-translate-x-1" />
+              Back to News
+            </motion.button>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Content - Horizontal Card Layout with Full Images */}
+              <div className="lg:col-span-2">
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="text-3xl md:text-4xl font-extrabold text-[#003459] leading-tight mb-6"
+                  transition={{ duration: 0.5 }}
+                  className="bg-white rounded-2xl shadow-xl overflow-hidden"
                 >
-                  {news.category}
-                </motion.h1>
-
-                {/* Metadata */}
-                <div className="flex items-center justify-between mb-6">
-                  <p className="text-sm font-semibold text-[#0d7680] flex items-center">
-                    <CalendarDaysIcon className="w-5 h-5 mr-2" />
-                    {formatDate(news.created_at)}
-                  </p>
-                  <ShareButton title={news.category} url={currentUrl} categoryRef={categoryRef} />
-                </div>
-
-                {/* News Image */}
-                {imageUrl && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="mb-8"
-                  >
-                    <img
-                      src={imageUrl}
-                      alt={news.category}
-                      className="w-full h-auto max-h-[500px] object-contain rounded-xl shadow-md"
-                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400?text=Image+Error")}
-                    />
-                  </motion.div>
-                )}
-
-                {/* News Content */}
-                <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.5 }}
-                    className="mb-4 text-lg text-gray-800"
-                    dangerouslySetInnerHTML={{ __html: text }}
-                  />
-                  {renderMedia(iframeSrcs)}
-
-                  {/* PDF Button */}
-                  {pdfUrl && (
-                    <div className="mt-8">
-                      <a
-                        href={pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-[#0A51A1] text-white font-semibold rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
-                        aria-label="View PDF document"
-                      >
-                        View PDF
-                      </a>
+                  {/* Full Image Section - NO CROPPING */}
+                  {imageUrl && (
+                    <div className="w-full bg-gray-100 flex justify-center items-center p-8">
+                      <img
+                        src={imageUrl}
+                        alt={news.category}
+                        className="max-w-full h-auto max-h-[600px] object-contain rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://via.placeholder.com/800x600?text=Image+Not+Available";
+                        }}
+                      />
                     </div>
                   )}
 
-                  {/* Read More In Detail Button */}
-                  <div className="mt-8">
-                    {readMoreUrl ? (
-                      <a
-                        href={readMoreUrl.startsWith("http") ? readMoreUrl : `https://${readMoreUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-all duration-300 hover:shadow-lg"
-                        aria-label="Read more in detail"
-                      >
-                        Read More In Detail
-                      </a>
-                    ) : (
-                      <p className="text-gray-500 italic">Read More In Detail Not Found</p>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
+                  {/* Content Section */}
+                  <div className="p-6 md:p-8">
+                    {/* Title */}
+                    <motion.h1
+                      ref={categoryRef}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-[#003459] leading-tight mb-4"
+                    >
+                      {news.category}
+                    </motion.h1>
 
-            {/* Sidebar */}
-            <aside className="lg:col-span-1 hidden lg:block sticky top-24 self-start">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300"
-              >
-                <h3 className="text-xl font-bold text-[#003459] mb-4">Quick Links</h3>
-                <ul className="space-y-3">
-                  <li>
-                    <button
-                      onClick={() => navigate("/company/news")}
-                      className="text-[#0A51A1] hover:underline font-medium hover:text-[#003459] transition-colors duration-200"
-                      aria-label="View all news"
-                    >
-                      All News
-                    </button>
-                  </li>
-                  <li>
-                    <a
-                      href="#top"
-                      className="text-[#0A51A1] hover:underline font-medium hover:text-[#003459] transition-colors duration-200"
-                      aria-label="Back to top"
-                    >
-                      Back to Top
-                    </a>
-                  </li>
-                </ul>
-                <div className="mt-6">
-                  <ShareButton title={news.category} url={currentUrl} categoryRef={categoryRef} />
-                </div>
-              </motion.div>
-            </aside>
+                    {/* Metadata */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <CalendarDaysIcon className="w-4 h-4 text-[#0072bc]" />
+                          <span>{formatDate(news.created_at)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="w-4 h-4 text-[#0072bc]" />
+                          <span>{getRelativeTime(news.created_at)}</span>
+                        </div>
+                      </div>
+                      <ShareButton title={news.category} url={currentUrl} categoryRef={categoryRef} />
+                    </div>
+
+                    {/* Description */}
+                    <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+                      <div dangerouslySetInnerHTML={{ __html: text }} />
+                      {renderMedia(iframeSrcs)}
+
+                      {/* PDF Button */}
+                      {pdfUrl && (
+                        <div className="mt-6">
+                          <a
+                            href={pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-5 py-2.5 bg-[#003459] text-white font-semibold rounded-lg shadow-md hover:bg-[#0072bc] transition-all duration-300"
+                          >
+                            View PDF Document
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Read More Button */}
+                      {readMoreUrl && (
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <a
+                            href={readMoreUrl.startsWith("http") ? readMoreUrl : `https://${readMoreUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-all duration-300"
+                          >
+                            Read More In Detail
+                            <ArrowRightIcon className="w-4 h-4" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Sidebar - Related News */}
+              <aside className="lg:col-span-1">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="sticky top-24"
+                >
+                  {/* Related News Section */}
+                  {relatedNews.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                      <h3 className="text-xl font-bold text-[#003459] mb-4 flex items-center gap-2">
+                        <span className="w-1 h-6 bg-[#ed1c24] rounded-full" />
+                        Related Stories
+                      </h3>
+                      <div className="space-y-3">
+                        {relatedNews.map((item) => (
+                          <RelatedNewsCard key={item.news_id} news={item} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Links */}
+                  <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 className="text-xl font-bold text-[#003459] mb-4 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-[#ed1c24] rounded-full" />
+                      Quick Links
+                    </h3>
+                    <ul className="space-y-3">
+                      <li>
+                        <Link
+                          to="/company/news"
+                          className="flex items-center gap-2 text-[#0072bc] hover:text-[#003459] transition-colors font-medium"
+                        >
+                          <ArrowRightIcon className="w-4 h-4" />
+                          All News
+                        </Link>
+                      </li>
+                      <li>
+                        <a
+                          href="#top"
+                          className="flex items-center gap-2 text-[#0072bc] hover:text-[#003459] transition-colors font-medium"
+                        >
+                          <ArrowRightIcon className="w-4 h-4" />
+                          Back to Top
+                        </a>
+                      </li>
+                    </ul>
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <ShareButton title={news.category} url={currentUrl} categoryRef={categoryRef} />
+                    </div>
+                  </div>
+                </motion.div>
+              </aside>
+            </div>
           </div>
         </section>
       </main>
-      <footer>
-        <Footer />
-      </footer>
+
+      <Footer />
     </div>
   );
 };

@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { ArrowPathIcon, InformationCircleIcon, ArrowUpRightIcon, InboxIcon } from "@heroicons/react/24/outline";
+import { 
+  ArrowPathIcon, 
+  InformationCircleIcon, 
+  ArrowUpRightIcon, 
+  InboxIcon,
+  BuildingStorefrontIcon
+} from "@heroicons/react/24/outline";
 import axiosInstance from "../axios";
 import Header from "../components/header/Header";
 import Footer from "../components/Footer";
@@ -33,28 +39,27 @@ const getFullUrl = (path: string | null): string => {
 
 // --- UI COMPONENTS ---
 
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="mb-4">
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <h2 className="text-2xl font-bold text-white tracking-wider">Loading Brands...</h2>
-  </motion.div>
+// Simple spinner loader (no full-screen pre-loader)
+const LoadingSpinner: React.FC = () => (
+  <div className="flex justify-center items-center py-20">
+    <div className="flex flex-col items-center">
+      <ArrowPathIcon className="w-12 h-12 text-[#0072bc] animate-spin" />
+      <p className="mt-4 text-gray-500 font-medium">Loading brands...</p>
+    </div>
+  </div>
 );
 
 const ErrorState: React.FC<{ title: string; message: string; onRetry: () => void }> = ({ title, message, onRetry }) => (
-  <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-gray-50 rounded-lg">
-    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-6">
+  <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 bg-white rounded-2xl shadow-lg">
+    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-6">
       <InformationCircleIcon className="w-10 h-10 text-[#ed1c24]" />
     </div>
-    <h2 className="text-3xl font-bold text-[#003459] mb-2">{title}</h2>
-    <p className="text-lg text-gray-600 max-w-md mb-8">{message}</p>
-    <button onClick={onRetry} className="flex items-center px-6 py-3 bg-[#003459] text-white font-semibold rounded-full hover:bg-[#0072bc] transition-colors shadow-md">
+    <h2 className="text-2xl md:text-3xl font-bold text-[#003459] mb-3">{title}</h2>
+    <p className="text-gray-600 max-w-md mb-8">{message}</p>
+    <button 
+      onClick={onRetry} 
+      className="inline-flex items-center px-6 py-3 bg-[#003459] text-white font-semibold rounded-full hover:bg-[#0072bc] transition-all duration-300 shadow-md hover:shadow-lg"
+    >
       <ArrowPathIcon className="w-5 h-5 mr-2" />
       Try Again
     </button>
@@ -66,7 +71,7 @@ const FormattedDescription: React.FC<{ text: string }> = ({ text }) => {
   return (
     <>
       {paragraphs.map((paragraph, index) => (
-        <p key={index} className="mb-3 last:mb-0">
+        <p key={index} className="mb-3 last:mb-0 leading-relaxed">
           {paragraph}
         </p>
       ))}
@@ -74,9 +79,10 @@ const FormattedDescription: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-// --- REFINED BrandCard COMPONENT ---
-const BrandCard: React.FC<{ brand: BrandData; variants: Variants }> = ({ brand, variants }) => {
+// --- ENHANCED BRAND CARD COMPONENT ---
+const BrandCard: React.FC<{ brand: BrandData; variants: Variants; index: number }> = ({ brand, variants, index }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const imageUrl = getFullUrl(brand.brand_img);
   const isExternalLink = !!brand.url_link && brand.url_link.startsWith('http');
   const targetUrl = brand.url_link || `/brands/${brand.brand_id}`;
@@ -85,48 +91,73 @@ const BrandCard: React.FC<{ brand: BrandData; variants: Variants }> = ({ brand, 
   const description = brand.description || "No description available.";
   const isLongDescription = description.length > TRUNCATE_LENGTH;
 
-  const imageContainerBase = "relative z-10 mx-auto w-3/4 h-32 flex items-center justify-center bg-gray-50 rounded-lg shadow-md transition-transform duration-300 ease-in-out";
-  const imageHoverClass = "group-hover:transform group-hover:-translate-y-8 group-hover:shadow-xl";
-
   return (
-    <motion.div layout variants={variants} className="relative group pt-10 flex flex-col">
-      {/* --- Image Container --- */}
-      <div className={`${imageContainerBase} ${imageHoverClass}`}>
-        <img
-          src={imageUrl}
-          alt={`${brand.category} logo`}
-          className="max-w-full max-h-full object-contain p-4"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          loading="lazy"
-        />
+    <motion.div
+      layout
+      variants={variants}
+      custom={index}
+      initial="hidden"
+      animate="visible"
+      className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col h-full"
+    >
+      {/* Image Section - Full image display */}
+      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-6">
+        {!imageError ? (
+          <>
+            <img
+              src={imageUrl}
+              alt={`${brand.category} logo`}
+              className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
+              onError={() => setImageError(true)}
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">View Brand</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-gray-400">
+            <BuildingStorefrontIcon className="w-16 h-16 mb-2" />
+            <span className="text-sm">Logo Coming Soon</span>
+          </div>
+        )}
+        <div className="absolute top-4 right-4 bg-[#ed1c24]/90 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg backdrop-blur-sm">
+          {brand.category}
+        </div>
       </div>
 
-      {/* --- Content Box --- */}
-      <div className="relative bg-white shadow-lg rounded-xl flex flex-col group transition-all duration-300 border border-transparent group-hover:border-[#0072bc] -mt-16 flex-grow">
-        <div className="p-6 pt-20 flex flex-col flex-grow">
-          <h3 className="text-2xl font-bold text-[#003459] mb-3">{brand.category}</h3>
-          <motion.div layout="position" className="text-gray-600 text-base mb-4 flex-grow">
-            {isLongDescription && !isExpanded ? <p>{`${description.substring(0, TRUNCATE_LENGTH)}...`}</p> : <FormattedDescription text={description} />}
-          </motion.div>
+      {/* Content Section */}
+      <div className="p-6 flex flex-col flex-grow">
+        <h3 className="text-xl md:text-2xl font-bold text-[#003459] mb-3 group-hover:text-[#0072bc] transition-colors line-clamp-1">
+          {brand.category}
+        </h3>
 
-          <div className="mt-auto pt-4">
-            {(!isLongDescription || isExpanded) && (
-              <Link
-                to={targetUrl}
-                target={isExternalLink ? "_blank" : "_self"}
-                rel={isExternalLink ? "noopener noreferrer" : ""}
-                className="inline-flex items-center gap-2 text-lg font-semibold text-[#ed1c24] group-hover:text-[#003459] transition-colors"
-              >
-                Read More
-                <ArrowUpRightIcon className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </Link>
-            )}
-            {isLongDescription && (
-              <button onClick={() => setIsExpanded(!isExpanded)} className="text-sm font-semibold text-[#0072bc] hover:text-[#003459] self-start mt-4 transition-colors">
-                {isExpanded ? "Show Less" : "Show More"}
-              </button>
-            )}
-          </div>
+        <div className="text-gray-600 text-sm leading-relaxed mb-4 flex-grow">
+          {isLongDescription && !isExpanded ? (
+            <p>{`${description.substring(0, TRUNCATE_LENGTH)}...`}</p>
+          ) : (
+            <FormattedDescription text={description} />
+          )}
+        </div>
+
+        <div className="mt-auto pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <Link
+            to={targetUrl}
+            target={isExternalLink ? "_blank" : "_self"}
+            rel={isExternalLink ? "noopener noreferrer" : ""}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#ed1c24] hover:text-[#003459] transition-colors group/link"
+          >
+            Explore Brand
+            <ArrowUpRightIcon className="w-4 h-4 transition-transform group-hover/link:translate-x-1 group-hover/link:-translate-y-1" />
+          </Link>
+          {isLongDescription && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs font-semibold text-[#0072bc] hover:text-[#003459] transition-colors"
+            >
+              {isExpanded ? "Show Less" : "Read More"}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>
@@ -147,7 +178,6 @@ const OurBrands: React.FC = () => {
       const response = await axiosInstance.get<ApiResponse>("/api/allBrands");
       const brandsData = response.data.data;
       if (Array.isArray(brandsData)) {
-        // Sort by brand_id descending to show the newest brands first.
         const sortedBrands = brandsData.sort((a, b) => b.brand_id - a.brand_id);
         setBrands(sortedBrands);
       } else {
@@ -167,7 +197,6 @@ const OurBrands: React.FC = () => {
     fetchBrands();
   }, [fetchBrands]);
 
-  // Normalize categories to handle case sensitivity and sort them for the filter UI
   const categories = ['All', ...Array.from(new Set(brands.map((brand) => brand.category))).sort()];
   const filteredBrands = activeFilter === 'All' ? brands : brands.filter((brand) => brand.category === activeFilter);
 
@@ -176,85 +205,96 @@ const OurBrands: React.FC = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05,
+        staggerChildren: 0.08,
       },
     },
   };
+
   const cardVariants: Variants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1 },
+    hidden: { y: 30, opacity: 0 },
+    visible: (custom: number) => ({
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        delay: custom * 0.05,
+        ease: "easeOut",
+      },
+    }),
   };
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] font-sans flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white font-sans flex flex-col">
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
-      <AnimatePresence>{loading && <Loader />}</AnimatePresence>
       <Header />
+      
       <main className="flex-grow">
-        <section className="py-20">
+        <section className="py-16 md:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-4xl md:text-5xl font-extrabold text-[#003459]">
-                Our <span className="text-[#0072bc]">Brands</span>
-              </motion.h1>
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mt-4 text-lg text-red-600 max-w-3xl mx-auto">
-                Explore MCL’s brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.
-              </motion.p>
-              <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mt-2 text-2xl font-semibold text-[#003459]">
-                Diverse Platforms, Unified Vision
-              </motion.h2>
-            </div>
-            {!loading && (
+            {loading ? (
+              <LoadingSpinner />
+            ) : error ? (
+              <ErrorState title="Oops, Something Went Wrong" message={error} onRetry={fetchBrands} />
+            ) : (
               <>
-                {error ? (
-                  <ErrorState title="Oops, Something Went Wrong" message={error} onRetry={fetchBrands} />
-                ) : (
-                  <>
-                    <div className="flex justify-center flex-wrap gap-3 mb-12">
-                      {categories.map((category) => (
-                        <button
-                          key={category}
-                          onClick={() => setActiveFilter(category)}
-                          className={`px-5 py-2 rounded-full font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
-                            activeFilter === category
-                              ? 'bg-[#ed1c24] text-white shadow-lg'
-                              : 'bg-white text-[#003459] hover:bg-gray-200 shadow-sm'
-                          }`}
-                        >
-                          {category}
-                        </button>
-                      ))}
-                    </div>
+                {/* Filter Section */}
+                <div className="mb-12">
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {categories.map((category) => (
+                      <motion.button
+                        key={category}
+                        onClick={() => setActiveFilter(category)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                          activeFilter === category
+                            ? 'bg-[#ed1c24] text-white shadow-lg shadow-red-200'
+                            : 'bg-white text-[#003459] hover:bg-gray-100 shadow-md border border-gray-200'
+                        }`}
+                      >
+                        {category}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Brands Grid */}
+                <motion.div
+                  key={activeFilter}
+                  variants={gridVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                >
+                  {filteredBrands.length > 0 ? (
+                    filteredBrands.map((brand, idx) => (
+                      <BrandCard 
+                        key={brand.brand_id} 
+                        brand={brand} 
+                        variants={cardVariants} 
+                        index={idx}
+                      />
+                    ))
+                  ) : (
                     <motion.div
-                      key={activeFilter}
-                      variants={gridVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-12 gap-x-8"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="col-span-full flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl shadow-lg"
                     >
-                      {filteredBrands.length > 0 ? (
-                        filteredBrands.map((brand) => (
-                          <BrandCard key={brand.brand_id} brand={brand} variants={cardVariants} />
-                        ))
-                      ) : (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="col-span-full mt-8 flex flex-col items-center justify-center text-center p-10 bg-white rounded-lg shadow-md"
-                        >
-                          <InboxIcon className="w-12 h-12 text-gray-400 mb-4" />
-                          <h3 className="text-2xl font-bold text-[#003459]">No Brands in this Category</h3>
-                          <p className="text-gray-500 mt-1">Please select another category to see more of our brands.</p>
-                        </motion.div>
-                      )}
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <InboxIcon className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-[#003459] mb-2">No Brands in this Category</h3>
+                      <p className="text-gray-500">Please select another category to see more of our brands.</p>
                     </motion.div>
-                  </>
-                )}
+                  )}
+                </motion.div>
               </>
             )}
           </div>
         </section>
       </main>
+      
       <Footer />
     </div>
   );
