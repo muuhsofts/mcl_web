@@ -22,6 +22,7 @@ export interface AboutCardData {
 }
 
 export interface SubscriptionData {
+  sort_order: number;
   subscription_id: number;
   category: string;
   total_viewers: number;
