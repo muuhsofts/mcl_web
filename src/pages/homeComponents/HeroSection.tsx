@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform, MotionValue } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { AboutSliderData, SubscriptionData } from "./types";
@@ -7,13 +7,13 @@ import { buildImageUrl, cleanText } from "./helpers";
 import axiosInstance from "../../axios";
 
 interface HeroSectionProps {
-  data: AboutSliderData[];
-  subscriptions: SubscriptionData[];
+  data?: AboutSliderData[];
+  subscriptions?: SubscriptionData[];
 }
 
 const SLIDE_INTERVAL = 5000;
 
-const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
+const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) => {
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(true);
   const [imagesLoaded, setImagesLoaded] = useState<Set<number>>(new Set());
@@ -21,16 +21,21 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const sliderRef = useRef<HTMLDivElement>(null);
 
+  // Motion values - always call hooks unconditionally
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 100, damping: 30 });
   const springY = useSpring(mouseY, { stiffness: 100, damping: 30 });
+  
+  // Create transforms unconditionally - they can be MotionValue or number
+  const rawTransformX = useTransform(springX, [-10, 10], [-15, 15]);
+  const rawTransformY = useTransform(springY, [-10, 10], [-15, 15]);
+  
+  // Use transform values based on isMobile
+  const transformX: MotionValue<number> | number = !isMobile ? rawTransformX : 0;
+  const transformY: MotionValue<number> | number = !isMobile ? rawTransformY : 0;
 
   const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
-
-  // Create transforms directly (not inside useMemo)
-  const transformX = !isMobile ? useTransform(springX, [-10, 10], [-15, 15]) : 0;
-  const transformY = !isMobile ? useTransform(springY, [-10, 10], [-15, 15]) : 0;
 
   // Check mobile viewport
   useEffect(() => {
@@ -111,18 +116,33 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
     return [...subscriptions].sort((a, b) => a.subscription_id - b.subscription_id);
   }, [subscriptions]);
 
-  if (!data?.length) return null;
+  // Early return if no data
+  if (!data?.length) {
+    return null;
+  }
 
   const slide = data[currentSlide];
   const imageUrl = slide?.home_img ? buildImageUrl(slide.home_img, baseURL) : "";
   const isCurrentImageLoaded = imagesLoaded.has(currentSlide);
+
+  // Helper to get style for transform
+  const getImageStyle = () => {
+    if (isMobile) {
+      return { scale: 1 };
+    }
+    return {
+      scale: 1.05,
+      x: transformX as MotionValue<number>,
+      y: transformY as MotionValue<number>,
+    };
+  };
 
   return (
     <section className="relative w-full overflow-hidden bg-white">
       {/* Hero Slider */}
       <div 
         ref={sliderRef}
-        className={`relative w-full overflow-hidden ${isMobile ? 'h-[70vh]' : 'h-[85vh] md:h-[95vh]'}`}
+        className={`relative w-full overflow-hidden ${isMobile ? 'h-[60vh] sm:h-[70vh]' : 'h-[85vh] md:h-[95vh]'}`}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => !isMobile && setIsAutoPlaying(false)}
         onMouseLeave={() => !isMobile && setIsAutoPlaying(true)}
@@ -135,6 +155,10 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
           
           {imageUrl && (
             <picture>
+              <source
+                media="(max-width: 640px)"
+                srcSet={`${imageUrl}?w=640&h=480&fit=crop&q=85`}
+              />
               <source
                 media="(max-width: 768px)"
                 srcSet={`${imageUrl}?w=768&h=600&fit=crop&q=85`}
@@ -151,11 +175,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                 src={imageUrl}
                 alt={slide?.heading || "Hero image"}
                 className={`absolute top-0 left-0 w-full h-full ${isMobile ? 'object-cover object-center' : 'object-cover object-top'}`}
-                style={{
-                  scale: !isMobile ? 1.05 : 1,
-                  x: !isMobile ? transformX : 0,
-                  y: !isMobile ? transformY : 0,
-                }}
+                style={getImageStyle()}
                 initial={{ opacity: 0, scale: 1 }}
                 animate={{ 
                   opacity: isCurrentImageLoaded ? 1 : 0,
@@ -172,8 +192,11 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
           )}
         </div>
 
+        {/* Dark Overlay for better text readability on mobile */}
+        <div className="absolute inset-0 bg-black/40 md:bg-black/30 z-10" />
+
         {/* Hero Content */}
-        <div className="absolute inset-0 flex items-center">
+        <div className="absolute inset-0 flex items-center z-20">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -186,13 +209,13 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.6 }}
                 className={`
-                  font-bold text-white mb-4 md:mb-6 leading-[1.1] tracking-tight font-sans
+                  font-bold text-white mb-3 sm:mb-4 md:mb-6 leading-[1.2] sm:leading-[1.1] tracking-tight font-sans
                   ${isMobile 
-                    ? 'text-3xl sm:text-4xl' 
+                    ? 'text-2xl sm:text-3xl md:text-4xl' 
                     : 'text-5xl sm:text-6xl md:text-7xl lg:text-8xl'
                   }
                 `}
-                style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}
+                style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
               >
                 {slide?.heading || "Shaping Tanzania's Media Landscape"}
               </motion.h1>
@@ -203,13 +226,13 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.6 }}
                   className={`
-                    text-white mb-6 md:mb-8 font-sans
+                    text-white mb-5 sm:mb-6 md:mb-8 font-sans
                     ${isMobile 
-                      ? 'text-sm sm:text-base max-w-full' 
+                      ? 'text-xs sm:text-sm max-w-full px-2' 
                       : 'text-base md:text-lg max-w-xl'
                     }
                   `}
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}
+                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   {cleanText(slide.description)}
                 </motion.p>
@@ -219,17 +242,17 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.6 }}
-                className={`flex flex-wrap items-center gap-4 md:gap-5 ${isMobile ? 'justify-center' : ''}`}
+                className={`flex flex-wrap items-center gap-3 sm:gap-4 md:gap-5 ${isMobile ? 'justify-center' : ''}`}
               >
                 <Link to="/">
                   <motion.button
-                    whileHover={{ scale: isMobile ? 1 : 1.05 }}
+                    whileHover={{ scale: isMobile ? 1.02 : 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`
                       rounded-full font-bold text-white shadow-xl font-sans 
                       bg-gradient-to-r from-[#FF3520] to-[#0069B4] hover:shadow-2xl transition-all
                       ${isMobile 
-                        ? 'px-6 py-2.5 text-sm' 
+                        ? 'px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm' 
                         : 'px-10 py-4 text-lg'
                       }
                     `}
@@ -248,7 +271,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                     >
                       <motion.div
                         animate={{
-                          width: idx === currentSlide ? (isMobile ? 24 : 32) : (isMobile ? 6 : 8),
+                          width: idx === currentSlide ? (isMobile ? 20 : 32) : (isMobile ? 5 : 8),
                           backgroundColor: idx === currentSlide ? '#0069B4' : 'rgba(255,255,255,0.8)'
                         }}
                         className="h-1 rounded-full"
@@ -262,33 +285,33 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
         </div>
       </div>
 
-      {/* Digital Reach Section - Enhanced with pale #0069B4 */}
+      {/* Digital Reach Section - Enhanced visibility on mobile */}
       {sortedSubscriptions.length > 0 && (
-        <div className="relative z-30 bg-gradient-to-b from-[#E8F1F8] to-white">
+        <div className="relative z-30 bg-gradient-to-b from-[#E8F1F8] to-white py-8 sm:py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative -mt-12 md:-mt-20 z-40"
+              className="relative -mt-8 sm:-mt-12 md:-mt-20 z-40"
             >
-              <div className="bg-white rounded-3xl shadow-2xl shadow-[#0069B4]/15 overflow-hidden border border-[#0069B4]/10">
-                {/* Section Header with #0069B4 accent */}
-                <div className={`text-center ${isMobile ? 'pt-8 pb-4' : 'pt-10 pb-6'} px-4 bg-gradient-to-b from-[#435663] to-white`}>
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl shadow-[#0069B4]/10 overflow-hidden border border-[#0069B4]/10">
+                {/* Section Header with better mobile spacing */}
+                <div className={`text-center ${isMobile ? 'pt-6 pb-3' : 'pt-10 pb-6'} px-4 bg-gradient-to-b from-[#435663] to-white`}>
                   <span className="inline-block text-xs sm:text-sm font-semibold tracking-wider uppercase text-[#0069B4] bg-[#E8F1F8] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-[#0069B4]/20">
                     Digital Reach
                   </span>
-                  <h2 className={`font-bold text-gray-900 mt-3 sm:mt-4 mb-2 sm:mb-3 ${isMobile ? 'text-2xl' : 'text-3xl md:text-4xl'}`}>
+                  <h2 className={`font-bold text-gray-900 mt-2 sm:mt-4 mb-1 sm:mb-3 ${isMobile ? 'text-xl sm:text-2xl' : 'text-3xl md:text-4xl'}`}>
                     Websites & Applications
                   </h2>
-                  <div className="w-20 h-1 bg-gradient-to-r from-[#0069B4] to-[#FF3520] mx-auto rounded-full mt-2" />
+                  <div className="w-16 sm:w-20 h-0.5 sm:h-1 bg-gradient-to-r from-[#0069B4] to-[#FF3520] mx-auto rounded-full mt-1 sm:mt-2" />
                 </div>
 
-                {/* Responsive Grid - 5 Items Per Row */}
+                {/* Responsive Grid - Mobile optimized */}
                 <div className={`
-                  grid gap-4 sm:gap-6 px-6 sm:px-8 pb-8 sm:pb-10
+                  grid gap-3 sm:gap-4 md:gap-6 px-4 sm:px-6 md:px-8 pb-6 sm:pb-8 md:pb-10
                   ${isMobile 
-                    ? 'grid-cols-1 sm:grid-cols-2' 
+                    ? 'grid-cols-1' 
                     : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
                   }
                 `}>
@@ -297,14 +320,14 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                       key={sub.subscription_id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: (idx % 5) * 0.05 }}
+                      transition={{ duration: 0.4, delay: Math.min((idx % 5) * 0.05, 0.2) }}
                       whileHover={!isMobile ? { y: -8, scale: 1.02 } : {}}
                       onHoverStart={() => !isMobile && setActiveCard(idx)}
                       onHoverEnd={() => !isMobile && setActiveCard(null)}
                       className="w-full"
                     >
                       <motion.div 
-                        className="relative bg-white rounded-2xl overflow-hidden h-full border border-[#0069B4]/10 hover:border-[#0069B4]/30 transition-all duration-300 group shadow-sm hover:shadow-xl"
+                        className="relative bg-white rounded-xl sm:rounded-2xl overflow-hidden h-full border border-[#0069B4]/10 hover:border-[#0069B4]/30 transition-all duration-300 group shadow-md sm:shadow-sm hover:shadow-xl"
                         animate={!isMobile ? {
                           boxShadow: activeCard === idx 
                             ? "0 20px 40px -12px rgba(0, 105, 180, 0.2), 0 8px 18px rgba(0,0,0,0.06)" 
@@ -313,19 +336,19 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                         transition={{ duration: 0.2 }}
                       >
                         {/* Top accent bar on hover */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0069B4] to-[#FF3520] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+                        <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-[#0069B4] to-[#FF3520] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
                         
-                        <div className={`${isMobile ? 'p-4' : 'p-5 md:p-6'} text-center`}>
-                          {/* Logo with pale blue background */}
-                          <div className={`relative mx-auto mb-3 sm:mb-4 ${isMobile ? 'w-20 h-20' : 'w-24 h-24'}`}>
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#0069B4]/10 to-[#FF3520]/5 blur-xl group-hover:blur-2xl transition-all duration-300" />
-                            <div className="relative w-full h-full p-1.5 sm:p-2 bg-white rounded-xl shadow-sm flex items-center justify-center border border-[#0069B4]/10 group-hover:border-[#0069B4]/30 group-hover:shadow-md transition-all duration-300">
+                        <div className={`${isMobile ? 'p-3 sm:p-4' : 'p-5 md:p-6'} text-center`}>
+                          {/* Logo container - responsive sizing */}
+                          <div className={`relative mx-auto mb-2 sm:mb-3 md:mb-4 ${isMobile ? 'w-16 h-16 sm:w-20 sm:h-20' : 'w-24 h-24'}`}>
+                            <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-br from-[#0069B4]/10 to-[#FF3520]/5 blur-md sm:blur-xl group-hover:blur-lg sm:group-hover:blur-2xl transition-all duration-300" />
+                            <div className="relative w-full h-full p-1 sm:p-1.5 md:p-2 bg-white rounded-lg sm:rounded-xl shadow-sm flex items-center justify-center border border-[#0069B4]/10 group-hover:border-[#0069B4]/30 group-hover:shadow-md transition-all duration-300">
                               {sub.logo_img_file ? (
                                 <img
                                   src={buildImageUrl(sub.logo_img_file, baseURL)}
                                   alt={sub.category}
-                                  width={isMobile ? 64 : 80}
-                                  height={isMobile ? 64 : 80}
+                                  width={isMobile ? 48 : 80}
+                                  height={isMobile ? 48 : 80}
                                   className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110"
                                   loading="lazy"
                                   decoding="async"
@@ -335,7 +358,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <svg className="w-12 h-12 text-[#0069B4]/40 group-hover:text-[#0069B4] transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-[#0069B4]/40 group-hover:text-[#0069B4] transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                   </svg>
                                 </div>
@@ -343,27 +366,27 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
                             </div>
                           </div>
                           
-                          {/* Category with #0069B4 hover effect */}
+                          {/* Category with better mobile text sizing */}
                           <h3 className={`
-                            font-bold text-gray-800 mb-2 sm:mb-3 line-clamp-2 flex items-center justify-center font-sans tracking-tight
+                            font-bold text-gray-800 mb-1 sm:mb-2 md:mb-3 line-clamp-2 flex items-center justify-center font-sans tracking-tight
                             group-hover:text-[#0069B4] transition-colors duration-300
-                            ${isMobile ? 'text-sm' : 'text-base md:text-lg'}
+                            ${isMobile ? 'text-xs sm:text-sm' : 'text-base md:text-lg'}
                           `}>
                             {sub.category}
                           </h3>
                           
-                          {/* Viewers Counter with gradient from #0069B4 */}
-                          <div className="mt-1 sm:mt-2">
+                          {/* Viewers Counter with visible numbers on mobile */}
+                          <div className="mt-0.5 sm:mt-1 md:mt-2">
                             <div className={`
                               font-black bg-gradient-to-r from-[#0069B4] to-[#FF3520] bg-clip-text text-transparent font-sans tracking-tighter
-                              ${isMobile ? 'text-xl' : 'text-2xl md:text-3xl'}
+                              ${isMobile ? 'text-base sm:text-lg md:text-xl' : 'text-2xl md:text-3xl'}
                             `}>
                               {sub.total_viewers}
                             </div>
                           </div>
 
-                          {/* Border accent with #0069B4 */}
-                          <div className={`w-8 sm:w-10 h-0.5 bg-gradient-to-r from-[#0069B4] to-[#FF3520] mx-auto mt-3 sm:mt-4 rounded-full transform group-hover:scale-125 transition-transform duration-300`} />
+                          {/* Border accent with better mobile visibility */}
+                          <div className={`w-6 sm:w-8 md:w-10 h-0.5 bg-gradient-to-r from-[#0069B4] to-[#FF3520] mx-auto mt-2 sm:mt-3 md:mt-4 rounded-full transform group-hover:scale-125 transition-transform duration-300`} />
                         </div>
                       </motion.div>
                     </motion.div>
@@ -375,7 +398,7 @@ const HeroSection = memo(({ data, subscriptions }: HeroSectionProps) => {
         </div>
       )}
 
-      {/* Scroll Indicator */}
+      {/* Scroll Indicator - Hidden on mobile for better UX */}
       {!isMobile && (
         <motion.div
           initial={{ opacity: 0 }}
