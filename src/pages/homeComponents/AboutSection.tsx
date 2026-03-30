@@ -45,7 +45,7 @@ const AboutSection = memo(({ content }: AboutSectionProps) => {
       </div>
       
       <div className="relative z-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Title Section on Top */}
+        {/* Title Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -72,40 +72,41 @@ const AboutSection = memo(({ content }: AboutSectionProps) => {
           </motion.h2>
         </motion.div>
 
-        {/* Single Wide Horizontal Card with Two Paragraphs Side by Side */}
+        {/* Plain Content - No Cards, Just Text */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          whileHover={{ y: -5 }}
-          className="group"
+          className="space-y-8"
         >
-          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
-            {/* Horizontal Layout Inside Card */}
-            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-              {paragraphs.map((paragraph, index) => (
-                <div key={index} className="p-8 md:p-10 lg:p-12">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#007aff]/10 to-[#FF3520]/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                        <DocumentTextIcon className="w-6 h-6 text-[#007aff]" />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-700 text-base md:text-lg leading-relaxed font-sans">
-                        {paragraph}
-                      </p>
-                    </div>
-                  </div>
+          {paragraphs.map((paragraph, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, x: -20 }}
+              animate={isInView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.5 + (index * 0.1) }}
+              className="flex items-start gap-4"
+            >
+              {/* Icon without card */}
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#007aff]/10 to-[#FF3520]/10 flex items-center justify-center">
+                  <DocumentTextIcon className="w-6 h-6 text-[#007aff]" />
                 </div>
-              ))}
-            </div>
-            
-            {/* Decorative bottom gradient bar */}
-            <div className="h-1 bg-gradient-to-r from-[#007aff] to-[#FF3520] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-          </div>
+              </div>
+              
+              {/* Text content - No Card */}
+              <div className="flex-1">
+                <p className="text-gray-700 text-base md:text-lg leading-relaxed font-sans">
+                  {paragraph}
+                </p>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
+      
+      {/* Subtle gradient separation */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-100/50 to-transparent pointer-events-none" />
     </section>
   );
 });
