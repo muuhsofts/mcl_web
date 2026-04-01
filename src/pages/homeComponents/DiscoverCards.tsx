@@ -9,7 +9,6 @@ import {
   CalendarIcon,
   SparklesIcon,
   ClockIcon,
-  HeartIcon,
   PlayIcon,
 } from "@heroicons/react/24/outline";
 import { AboutCardData } from "./types";

@@ -19,7 +19,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
 
   const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
 
-  // Mobile detection
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -27,7 +26,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Fetch slider data (only use first item)
   useEffect(() => {
     const fetchSlider = async () => {
       try {
@@ -46,7 +44,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
     }
   }, [data]);
 
-  // Fetch subscriptions
   useEffect(() => {
     const fetchSubs = async () => {
       try {
@@ -75,11 +72,8 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-gray-900 to-black">
-      <div
-        className={`relative w-full overflow-hidden ${
-          isMobile ? "h-[85vh]" : "h-[100vh]"
-        }`}
-      >
+      <div className={`relative w-full overflow-hidden ${isMobile ? "h-[85vh]" : "h-[100vh]"}`}>
+        
         {/* Background Image */}
         <div className="absolute inset-0">
           {!imageLoaded && (
@@ -94,7 +88,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
             onError={() => setImageLoaded(true)}
           />
 
-          {/* Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/90" />
         </div>
 
@@ -121,7 +114,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
           </div>
         </div>
 
-        {/* Scroll Indicator */}
         {!isMobile && (
           <motion.div
             className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white z-20"
@@ -133,7 +125,7 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
           </motion.div>
         )}
 
-        {/* Our Impacts Section - Improved with smaller & cleaner fonts */}
+        {/* Impact Section */}
         {sortedSubs.length > 0 && (
           <motion.div
             className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-8 pb-6"
@@ -156,16 +148,18 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
                     className="flex flex-col items-center text-center group"
                   >
                     <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-3 overflow-hidden border border-white/10">
+                      
                       {sub.logo_img_file ? (
                         <img
                           src={buildImageUrl(sub.logo_img_file, baseURL)}
                           alt={sub.category}
-                          className="w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 object-contain"
+                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-18 md:h-18 object-contain"
                           loading="lazy"
                         />
                       ) : (
                         <EyeIcon className="w-7 h-7 text-white/70" />
                       )}
+
                     </div>
 
                     <p className="text-white/60 text-[10px] sm:text-xs uppercase tracking-widest mb-1 font-medium">
@@ -187,3 +181,4 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
 
 HeroSection.displayName = "HeroSection";
 export default HeroSection;
+
