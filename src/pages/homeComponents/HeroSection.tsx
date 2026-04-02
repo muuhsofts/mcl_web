@@ -1,6 +1,6 @@
-import { memo, useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ChevronDownIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { memo, useState, useEffect, useRef } from "react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { EyeIcon, PlayIcon, PauseIcon, UsersIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../../axios";
 
 import { AboutSliderData, SubscriptionData } from "./types";
@@ -11,44 +11,65 @@ interface HeroSectionProps {
   subscriptions?: SubscriptionData[];
 }
 
-interface LogoDetails {
-  size: string;
-  bytes: number;
-  filename: string;
-  width: number;
-  height: number;
-  dimensions: string;
-}
+type HeroStage = 0 | 1 | 2;
+
+const VolumeUpIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+  </svg>
+);
+
+const VolumeOffIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6-4.72 4.72a.75.75 0 0 0-.53 1.28l4.72 4.72c.342.342.53.802.53 1.28v-9.58c0-.954-1.154-1.433-1.83-.78Zm11.78 0A9 9 0 0 0 8.25 7.5M8.25 7.5A9 9 0 0 0 2.25 12m6-4.5L2.25 12" />
+  </svg>
+);
 
 const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) => {
   const [sliderData, setSliderData] = useState<AboutSliderData[]>([]);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData[]>([]);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1920);
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const [currentStage, setCurrentStage] = useState<HeroStage>(0);
+  const [showSnakeMotion, setShowSnakeMotion] = useState(true);
+  const [impactOffset, setImpactOffset] = useState(0);
 
-  // Store logo file sizes with dimensions
-  const [logoDetails, setLogoDetails] = useState<Record<number, LogoDetails>>({});
+  // Video states
+  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+
+  const sliderIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const impactIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
+
+  const isMobile = windowWidth < 640;
+  const isTablet = windowWidth >= 640 && windowWidth < 1024;
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Fetch data
   useEffect(() => {
     const fetchSlider = async () => {
       try {
         const res = await axiosInstance.get("/api/slider-imgs");
-        const images = Array.isArray(res.data) ? res.data : [];
-        setSliderData(images);
+        setSliderData(Array.isArray(res.data) ? res.data : []);
       } catch {
         setSliderData([]);
       }
     };
-
     if (data.length > 0) setSliderData(data);
     else fetchSlider();
   }, [data]);
@@ -62,265 +83,380 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
         setSubscriptionData([]);
       }
     };
-
     if (subscriptions.length > 0) setSubscriptionData(subscriptions);
     else fetchSubs();
   }, [subscriptions]);
 
-  // Fetch detailed logo file information with dimensions
+  // Main Slider
   useEffect(() => {
-    const fetchLogoDetails = async () => {
-      const details: Record<number, LogoDetails> = {};
+    if (sliderIntervalRef.current) clearInterval(sliderIntervalRef.current);
 
-      await Promise.all(
-        subscriptionData.map(async (sub) => {
-          if (!sub.logo_img_file) return;
-
-          try {
-            const url = buildImageUrl(sub.logo_img_file, baseURL);
-            
-            // Get filename from path
-            const filename = sub.logo_img_file.split('/').pop() || sub.logo_img_file;
-
-            // Fetch image blob
-            const res = await axiosInstance.get(url, {
-              responseType: "blob",
-            });
-
-            const bytes = res.data.size;
-            const kb = (bytes / 1024).toFixed(1);
-            const mb = (bytes / (1024 * 1024)).toFixed(2);
-            
-            // Format size nicely - show MB if > 1MB, otherwise KB
-            const formattedSize = bytes > 1024 * 1024 ? `${mb} MB` : `${kb} KB`;
-
-            // Get image dimensions by creating an Image object
-            let width = 0;
-            let height = 0;
-            let dimensions = "N/A";
-            
-            try {
-              const imageUrl = URL.createObjectURL(res.data);
-              const img = new Image();
-              
-              await new Promise((resolve, reject) => {
-                img.onload = () => {
-                  width = img.width;
-                  height = img.height;
-                  dimensions = `${width} x ${height} px`;
-                  URL.revokeObjectURL(imageUrl);
-                  resolve(true);
-                };
-                img.onerror = () => {
-                  URL.revokeObjectURL(imageUrl);
-                  reject(new Error("Failed to load image"));
-                };
-                img.src = imageUrl;
-              });
-            } catch (dimError) {
-              console.warn(`Could not get dimensions for ${filename}:`, dimError);
-            }
-
-            details[sub.subscription_id] = {
-              size: formattedSize,
-              bytes: bytes,
-              filename: filename,
-              width: width,
-              height: height,
-              dimensions: dimensions
-            };
-          } catch (error) {
-            details[sub.subscription_id] = {
-              size: "N/A",
-              bytes: 0,
-              filename: sub.logo_img_file.split('/').pop() || "unknown",
-              width: 0,
-              height: 0,
-              dimensions: "N/A"
-            };
+    if (currentStage === 0 && sliderData.length > 0) {
+      sliderIntervalRef.current = setInterval(() => {
+        setSliderIndex((prev) => {
+          const next = (prev + 1) % sliderData.length;
+          if (next === 0) {
+            setCurrentStage(1);
+            return prev;
           }
-        })
-      );
+          return next;
+        });
+      }, 7000);
+    }
 
-      setLogoDetails(details);
+    return () => {
+      if (sliderIntervalRef.current) clearInterval(sliderIntervalRef.current);
+    };
+  }, [currentStage, sliderData.length]);
+
+  // Horizontal Impact Slider
+  useEffect(() => {
+    if (currentStage !== 1 || subscriptionData.length < 4) return;
+
+    if (impactIntervalRef.current) clearInterval(impactIntervalRef.current);
+
+    impactIntervalRef.current = setInterval(() => {
+      setImpactOffset((prev) => {
+        const next = prev + 1;
+        const maxOffset = subscriptionData.length - 4;
+        if (next > maxOffset) {
+          setCurrentStage(2);
+          return 0;
+        }
+        return next;
+      });
+    }, 3200);
+
+    return () => {
+      if (impactIntervalRef.current) clearInterval(impactIntervalRef.current);
+    };
+  }, [currentStage, subscriptionData.length]);
+
+  // YouTube Setup
+  useEffect(() => {
+    if (currentStage !== 2 || videoError) return;
+
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName("script")[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    // @ts-ignore
+    window.onYouTubeIframeAPIReady = () => {
+      if (!videoContainerRef.current) return;
+      // @ts-ignore
+      playerRef.current = new YT.Player("hero-youtube-player", {
+        videoId: "3f2LulEqgrw",
+        playerVars: { autoplay: 1, mute: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, playsinline: 1 },
+        events: {
+          onReady: (event: any) => {
+            setVideoReady(true);
+            event.target.playVideo();
+            setIsVideoPlaying(true);
+            setIsMuted(true);
+          },
+          onError: () => setVideoError(true),
+        },
+      });
     };
 
-    if (subscriptionData.length > 0) {
-      fetchLogoDetails();
-    }
-  }, [subscriptionData, baseURL]);
+    return () => {
+      if (playerRef.current?.destroy) playerRef.current.destroy();
+    };
+  }, [currentStage, videoError]);
 
-  // Helper function to check if dimensions are too small (less than 100px)
-  const isDimensionTooSmall = (width: number, height: number): boolean => {
-    return width > 0 && height > 0 && (width < 100 || height < 100);
+  const slide = sliderData[sliderIndex];
+  const imageUrl = slide?.home_img ? buildImageUrl(slide.home_img, baseURL) : "";
+  const isFirstSlider = sliderIndex === 0;
+
+  const sortedSubs = [...subscriptionData].sort((a, b) => a.subscription_id - b.subscription_id);
+
+  const getHeadingSize = () => isMobile ? "text-2xl leading-tight" : isTablet ? "text-4xl md:text-5xl" : "text-6xl xl:text-7xl 2xl:text-8xl";
+  const getDescriptionSize = () => isMobile ? "text-xs" : isTablet ? "text-sm md:text-base" : "text-lg xl:text-xl";
+
+  // Snake System (unchanged)
+  const snakeColors = ["#3b82f6", "#ef4444", "#8b00ff", "#10b981", "#06b6d4", "#f97316"];
+  const snakePaths = [
+    "M -100 280 Q 200 120 450 320 Q 750 180 1100 290 Q 1400 220 1600 300",
+    "M 180 -80 Q 320 180 280 420 Q 450 580 620 380 Q 850 520 1050 650",
+    "M 1400 180 Q 1050 80 780 250 Q 520 420 300 190 Q -50 280 50 350",
+    "M 250 750 Q 480 580 650 720 Q 820 480 980 650 Q 1150 420 1300 580",
+    "M -50 100 Q 300 250 550 80 Q 850 320 1200 150",
+    "M 1350 650 Q 950 420 720 580 Q 380 350 80 520",
+  ];
+
+  const renderSnakes = () => {
+    if (!isFirstSlider || !showSnakeMotion) return null;
+    return (
+      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+        {snakeColors.map((color, index) => {
+          const delay = index * 0.22;
+          const duration = 2.7 + index * 0.12;
+          return (
+            <motion.div key={`snake-${index}`} className="absolute inset-0">
+              <svg className="absolute inset-0 w-full h-full" style={{ filter: "drop-shadow(0 0 15px rgba(255,255,255,0.25))" }}>
+                <defs>
+                  <linearGradient id={`snakeGrad${index}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.1" />
+                    <stop offset="45%" stopColor={color} stopOpacity="0.95" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0.15" />
+                  </linearGradient>
+                </defs>
+                <motion.path
+                  d={snakePaths[index % snakePaths.length]}
+                  fill="none"
+                  stroke={`url(#snakeGrad${index})`}
+                  strokeWidth={index % 2 === 0 ? 8 : 5}
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: [0, 1, 1, 0] }}
+                  transition={{ duration, delay, ease: "easeInOut" }}
+                />
+              </svg>
+
+              <motion.div
+                className="absolute z-20"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  x: ["-8%", "15%", "32%", "50%", "68%", "85%", "108%"],
+                  y: index % 3 === 0 ? ["25%", "18%", "34%", "23%", "31%", "26%", "29%"] : index % 3 === 1 ? ["68%", "74%", "57%", "70%", "59%", "73%", "67%"] : ["14%", "27%", "13%", "33%", "19%", "24%", "17%"],
+                  scale: [0, 1.35, 1, 1.2, 0.85, 1.05, 0],
+                  opacity: [0, 1, 1, 1, 1, 0.6, 0],
+                }}
+                transition={{ duration, delay, ease: "easeInOut" }}
+              >
+                <div className="w-10 h-10 rounded-full blur-lg" style={{ background: `radial-gradient(circle, ${color} 30%, transparent 75%)` }} />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full" style={{ background: color, boxShadow: `0 0 20px ${color}` }} />
+              </motion.div>
+            </motion.div>
+          );
+        })}
+      </div>
+    );
   };
 
-  const slide = sliderData[0];
-  const imageUrl = slide?.home_img ? buildImageUrl(slide.home_img, baseURL) : "";
+  useEffect(() => {
+    if (isFirstSlider && showSnakeMotion) {
+      const timer = setTimeout(() => setShowSnakeMotion(false), 4300);
+      return () => clearTimeout(timer);
+    }
+  }, [isFirstSlider, showSnakeMotion]);
 
-  const sortedSubs = [...subscriptionData].sort(
-    (a, b) => a.subscription_id - b.subscription_id
-  );
+  // ─── Updated Our Impact Stage with #1161B9 color & reduced font sizes ───
+  const renderImpactStage = () => {
+    const itemWidth = isMobile ? "168px" : isTablet ? "200px" : "235px";
 
-  if (!slide) return null;
-
-  return (
-    <section className="relative w-full overflow-hidden bg-gradient-to-b from-gray-900 to-black">
-      <div className={`relative w-full overflow-hidden ${isMobile ? "h-[85vh]" : "h-[100vh]"}`}>
-        
-        {/* Background Image */}
-        <div className="absolute inset-0">
-          {!imageLoaded && <div className="absolute inset-0 bg-gray-800 animate-pulse" />}
-
-          <img
-            src={imageUrl}
-            alt={slide.heading || "Hero background"}
-            className="w-full h-full object-cover"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(true)}
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="impact-stage"
+          className="absolute inset-0 overflow-hidden z-20"
+          style={{ background: "#1161B9" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Subtle pattern overlay */}
+          <div 
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
+              backgroundSize: '24px 24px'
+            }}
           />
 
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/90" />
-        </div>
-
-        {/* Main Content */}
-        <div className="absolute inset-0 flex items-start justify-center z-20 px-4 sm:px-6 pt-16 sm:pt-20 md:pt-24 lg:pt-28">
-          <div className="max-w-4xl w-full text-center text-white">
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-4 sm:mb-6 leading-tight"
+          <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-6 py-16 text-center">
+            {/* Section Header - Clean and minimal */}
+            <motion.div 
+              className="mb-12" 
+              initial={{ y: 30, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              {slide.heading}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-sm sm:text-base md:text-xl lg:text-2xl opacity-90 max-w-2xl mx-auto"
-            >
-              {cleanText(slide.description || "")}
-            </motion.p>
-          </div>
-        </div>
-
-        {!isMobile && (
-          <motion.div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white z-20"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            <ChevronDownIcon className="w-6 h-6 animate-bounce" />
-          </motion.div>
-        )}
-
-        {/* Impact Section */}
-        {sortedSubs.length > 0 && (
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-8 pb-6"
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-          >
-            <div className="container mx-auto px-4">
-              <div className="text-center mb-5">
-                <span className="inline-flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm uppercase tracking-[2px]">
-                  <EyeIcon className="w-4 h-4" />
-                  OUR IMPACT
-                </span>
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-1.5 rounded-full mb-6">
+                <UsersIcon className="w-3.5 h-3.5 text-white" />
+                <span className="uppercase tracking-[3px] text-white text-[11px] font-semibold">OUR IMPACT</span>
               </div>
+              
+              <p className="text-sm md:text-base text-white/70 font-light tracking-wide">
+                Reaching millions together
+              </p>
+            </motion.div>
 
-              <div className="flex flex-wrap gap-6 sm:gap-8 md:gap-10 justify-center">
-                {sortedSubs.map((sub) => {
-                  const details = logoDetails[sub.subscription_id];
-                  const isTooSmall = details && isDimensionTooSmall(details.width, details.height);
-                  
-                  return (
-                    <div
-                      key={sub.subscription_id}
-                      className="flex flex-col items-center text-center group relative"
-                    >
-                      <div className={`w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-3 overflow-hidden border ${
-                        isTooSmall ? 'border-yellow-500/50 ring-1 ring-yellow-500' : 'border-white/10'
-                      }`}>
-                        {sub.logo_img_file ? (
-                          <img
-                            src={buildImageUrl(sub.logo_img_file, baseURL)}
-                            alt={sub.category}
-                            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain scale-110"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <EyeIcon className="w-7 h-7 text-white/70" />
-                        )}
-                      </div>
-
-                      {/* File size display with warning for small dimensions */}
-                      {details && details.size !== "N/A" && (
-                        <div className="group relative">
-                          <p className={`text-[9px] mb-1 cursor-help font-mono ${
-                            isTooSmall ? 'text-yellow-400' : 'text-white/40'
-                          }`}>
-                            {details.size}
-                            {isTooSmall && " ⚠️"}
-                          </p>
-                          
-                          {/* Tooltip with full details including dimensions */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-2.5 bg-black/95 backdrop-blur-sm rounded-lg text-white text-xs whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none shadow-xl border border-white/10">
-                            <div className="flex flex-col gap-1.5">
-                              <div className="font-semibold text-yellow-400 border-b border-white/20 pb-1 mb-1">
-                                Logo File Details
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                <span className="text-white/60">📁 Filename:</span>
-                                <span className="font-mono text-white/90">{details.filename}</span>
-                                
-                                <span className="text-white/60">📊 File Size:</span>
-                                <span className="font-mono text-white/90">{details.size}</span>
-                                
-                                <span className="text-white/60">📐 Dimensions:</span>
-                                <span className={`font-mono ${details.width < 100 || details.height < 100 ? 'text-yellow-400 font-semibold' : 'text-white/90'}`}>
-                                  {details.dimensions}
-                                  {(details.width < 100 || details.height < 100) && " ⚠️"}
-                                </span>
-                                
-                                <span className="text-white/60">🔢 Bytes:</span>
-                                <span className="font-mono text-white/90">{details.bytes.toLocaleString()}</span>
-                              </div>
-                              {(details.width < 100 || details.height < 100) && (
-                                <div className="mt-1 pt-1 border-t border-yellow-500/30 text-yellow-400 text-[10px]">
-                                  ⚠️ Logo dimensions are smaller than recommended (min 100px)
-                                </div>
-                              )}
-                            </div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-black/95 rotate-45 border-r border-b border-white/10"></div>
-                          </div>
-                        </div>
+            {/* Impact Cards - Horizontal Scroll with smooth animation */}
+            <div className="w-full max-w-7xl overflow-hidden px-4">
+              <motion.div
+                className="flex gap-6 justify-center"
+                animate={{ x: `calc(-${impactOffset * (parseInt(itemWidth) + 24)}px)` }}
+                transition={{ duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
+                style={{ width: `${sortedSubs.length * (parseInt(itemWidth) + 24)}px` }}
+              >
+                {sortedSubs.map((sub, idx) => (
+                  <motion.div
+                    key={idx}
+                    className="flex-shrink-0 flex flex-col items-center text-center"
+                    style={{ width: itemWidth }}
+                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  >
+                    {/* Logo Card - Clean white with subtle shadow */}
+                    <div className="w-36 h-32 md:w-44 md:h-40 bg-white/95 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-5 shadow-xl border border-white/20">
+                      {sub.logo_img_file ? (
+                        <img
+                          src={buildImageUrl(sub.logo_img_file, baseURL)}
+                          alt={sub.category}
+                          className="w-28 h-28 md:w-36 md:h-36 object-contain p-3"
+                        />
+                      ) : (
+                        <EyeIcon className="w-16 h-16 text-gray-400" />
                       )}
-
-                      {(!details || details.size === "N/A") && (
-                        <p className="text-[9px] text-white/20 mb-1">—</p>
-                      )}
-
-                      <p className="text-white/60 text-[10px] sm:text-xs uppercase tracking-widest mb-1 font-medium">
-                        {sub.category}
-                      </p>
-
-                      <p className="text-white font-bold text-base sm:text-lg md:text-xl">
-                        {sub.total_viewers}
-                      </p>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Category - Smaller, uppercase, subtle */}
+                    <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[2px] mb-1">
+                      {sub.category}
+                    </p>
+
+                    {/* Total Viewers - Reduced font, clean number display */}
+                    <p className="text-white font-bold text-2xl md:text-3xl lg:text-4xl tracking-tight">
+                      {typeof sub.total_viewers === 'number' ? sub.total_viewers.toLocaleString() : sub.total_viewers}
+                    </p>
+                    
+                    {/* Label - Very subtle */}
+                    <p className="text-white/40 text-[10px] mt-0.5 tracking-wider">VIEWERS REACHED</p>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
-          </motion.div>
+
+            {/* Progress Dots - Minimal */}
+            <div className="flex gap-1.5 mt-12">
+              {Array.from({ length: Math.max(1, sortedSubs.length - 3) }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 rounded-full transition-all duration-500 ${i === impactOffset 
+                    ? "bg-white w-6 shadow-md" 
+                    : "bg-white/20 w-1.5"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
+  // Video Stage (unchanged)
+  const handleVideoPlayPause = () => {
+    if (!playerRef.current || !videoReady) return;
+    if (isVideoPlaying) playerRef.current.pauseVideo();
+    else playerRef.current.playVideo();
+    setIsVideoPlaying(!isVideoPlaying);
+  };
+
+  const handleVideoMuteUnmute = () => {
+    if (!playerRef.current || !videoReady) return;
+    if (isMuted) playerRef.current.unMute();
+    else playerRef.current.mute();
+    setIsMuted(!isMuted);
+  };
+
+  const renderVideoStage = () => {
+    if (videoError) {
+      return <div className="absolute inset-0 bg-black flex items-center justify-center text-white">Video unavailable</div>;
+    }
+
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div key="video-stage" className="absolute inset-0 bg-black z-30" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div ref={videoContainerRef} className="absolute inset-0">
+            <div id="hero-youtube-player" className="w-full h-full" />
+          </div>
+
+          <div className="absolute top-6 right-6 z-50 flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleVideoMuteUnmute}
+              className="bg-black/70 hover:bg-black/90 p-3 rounded-xl text-white border border-white/30 backdrop-blur-sm"
+            >
+              {isMuted ? <VolumeOffIcon className="w-4 h-4" /> : <VolumeUpIcon className="w-4 h-4" />}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleVideoPlayPause}
+              className="bg-black/70 hover:bg-black/90 p-3 rounded-xl text-white border border-white/30 backdrop-blur-sm"
+            >
+              {isVideoPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
+            </motion.button>
+          </div>
+
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-5 py-1.5 rounded-full text-[11px] text-white/80 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            LIVE EXPERIENCE
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
+  if (sliderData.length === 0 && currentStage === 0) {
+    return <div className="min-h-screen bg-[#1161B9] flex items-center justify-center text-white">Loading experience...</div>;
+  }
+
+  return (
+    <motion.section
+      className="relative w-full overflow-hidden bg-black min-h-screen"
+      style={{ opacity, scale }}
+    >
+      <div className="relative w-full h-screen overflow-hidden">
+        {currentStage === 0 && (
+          <div className="absolute inset-0 z-10">
+            <img src={imageUrl} alt={slide?.heading || "Hero"} className="w-full h-full object-cover" draggable={false} />
+            {renderSnakes()}
+
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+              {sliderData.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSliderIndex(idx)}
+                  className={`h-1 rounded-full transition-all ${idx === sliderIndex ? "bg-red-500 w-6" : "bg-white/40 w-1.5"}`}
+                />
+              ))}
+            </div>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-6 text-center text-white">
+              <motion.h1
+                key={`h1-${sliderIndex}`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`font-semibold tracking-tight mb-4 ${getHeadingSize()}`}
+              >
+                {slide?.heading}
+              </motion.h1>
+              <motion.p
+                key={`p-${sliderIndex}`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className={`max-w-md mx-auto ${getDescriptionSize()}`}
+              >
+                {cleanText(slide?.description || "")}
+              </motion.p>
+            </div>
+          </div>
         )}
+
+        {currentStage === 1 && renderImpactStage()}
+        {currentStage === 2 && renderVideoStage()}
+
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full text-[10px] text-white/70">
+          {currentStage === 0 && "Journey"} 
+          {currentStage === 1 && "Our Impact"} 
+          {currentStage === 2 && "Live Experience"}
+        </div>
       </div>
-    </section>
+    </motion.section>
   );
 });
 
