@@ -321,8 +321,7 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
                       {typeof sub.total_viewers === 'number' ? sub.total_viewers.toLocaleString() : sub.total_viewers}
                     </p>
                     
-                    {/* Label - Very subtle */}
-                    <p className="text-white/40 text-[10px] mt-0.5 tracking-wider">VIEWERS REACHED</p>
+                  
                   </motion.div>
                 ))}
               </motion.div>
