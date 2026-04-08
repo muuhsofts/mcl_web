@@ -12,9 +12,11 @@ import VisionMissionSection from "./homeComponents/VisionMissionSection";
 import ValuesSection from "./homeComponents/ValuesSection";
 import DiscoverCards from "./homeComponents/DiscoverCards";
 import ValueModal from "./homeComponents/ValueModal";
+import OurImpact from "./homeComponents/OurImpact"; // Add this import
 
 // Custom hooks and utilities
 import { useAboutData } from "./homeComponents/useAboutData";
+
 
 // Lazy load heavy components
 const Footer = lazy(() => import("../components/Footer"));
@@ -23,7 +25,6 @@ const AboutFTSection = () => {
   const {
     isLoading,
     sliderData,
-    subscriptions,
     aboutContent,
     values,
     cards,
@@ -95,13 +96,13 @@ const AboutFTSection = () => {
             {/* Meta Description */}
             <meta 
               name="description" 
-              content={aboutContent ? aboutContent.description.slice(0, 155) : "Tanzania's leading digital multimedia company delivering trusted news, innovative media solutions, and exceptional content across all platforms. Discover our story, mission, and values."} 
+              content={aboutContent ? aboutContent.description.slice(0, 155) : "Tanzania's Leading Media Company."} 
             />
             
             {/* Keywords */}
             <meta 
               name="keywords" 
-              content="leading media company Tanzania, Mwananchi Communications, digital media Tanzania, Tanzanian news, multimedia company, East African media, media house Tanzania, best media company Tanzania" 
+              content="Tanzania's Leading Media Company" 
             />
             
             {/* Canonical URL */}
@@ -133,12 +134,20 @@ const AboutFTSection = () => {
             <meta name="ICBM" content="-6.792354, 39.208328" />
           </Helmet>
 
-          <HeroSection data={sliderData} subscriptions={subscriptions} />
+          <HeroSection data={sliderData} />
           
           <main>
             <AboutSection content={aboutContent} />
             <VisionMissionSection />
             <ValuesSection values={values} onCardClick={handleValueClick} />
+            
+            {/* Our Impact Section - Placed below Our Values */}
+            <OurImpact 
+              autoPlay={true}
+              intervalTime={3200}
+              onComplete={() => console.log('Impact carousel completed')}
+            />
+            
             <DiscoverCards cards={cards} />
           </main>
           

@@ -177,7 +177,8 @@ import  Subscriptions  from './pages/subscriptions/Subscriptions'
 import  AddSubscription  from './pages/subscriptions/AddSubscription'
 import  EditSubscription  from  './pages/subscriptions/EditSubscription'
 import CertPage from './pages/CertPage';
-import  SingleNewsPage from  './pages/SingleNewsPage'
+import  SingleNewsPage from  './pages/SingleNewsPage';
+import Gallery from './pages/Gallery'
 
 
 // Define props for ProtectedRoute
@@ -1402,6 +1403,8 @@ export default function App() {
                <Route path="/all-events" element={<EventsLayouts />}/>
                 <Route path="/events/:eventId" element={<ViewSubEvents />} />
                <Route path="/readmore-news/:news_id" element={<SingleNewsPage />} />
+    
+               <Route path="/gallery" element={<Gallery />} />
             
                
               

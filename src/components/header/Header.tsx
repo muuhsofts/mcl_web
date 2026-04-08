@@ -57,6 +57,7 @@ const navItems: NavItem[] = [
   { label: "Company", path: "", dropdown: companyMenuItems },
   { label: "Our Brands", path: "/our-brands" },
   { label: "News", path: "/company/news" },
+  { label: "Gallery", path: "/gallery" },
   { label: "Events", path: "/all-events" },
   { label: "Careers", path: "", dropdown: careersMenuItems },
   { label: "Contact", path: "/company/contact-us" },
@@ -66,7 +67,7 @@ const navItems: NavItem[] = [
 const metaTags: { [key: string]: MetaTag } = {
   "/": {
     title: "Mwananchi Communications Limited",
-    description: "Is a subsidiary of Nation Media Group. It is the leading print media company in Tanzania with print as well as online platforms. It was established in May 1999 as a Media Communication Limited and transformed to the advertising & Public Relations agency in year 2001 and was later acquired by Nation Media Group in the year 2002. Through Newspapers, we deliver a literate and informed audience who are opinion leaders, early adopters, and heavy consumers of different brands and service.",
+    description: "Is a subsidiary of Nation Media Group. Tanzania's Leading Media  Company",
     keywords: "Trusted Journalism, Diverse Platforms, Impactful Stories",
     structuredData: [
       {
@@ -106,7 +107,7 @@ const metaTags: { [key: string]: MetaTag } = {
     ],
     og: {
       title: "Mwananchi Communications Limited",
-      description: "Is a subsidiary of Nation Media Group. It is the leading print media company in Tanzania with print as well as online platforms. It was established in May 1999 as a Media Communication Limited and transformed to the advertising & Public Relations agency in year 2001 and was later acquired by Nation Media Group in the year 2002. Through Newspapers, we deliver a literate and informed audience who are opinion leaders, early adopters, and heavy consumers of different brands and service.",
+      description: "Is a subsidiary of Nation Media Group. Tanzania's Leading Media  Company",
       type: "website",
       url: "https://www.mcl.co.tz",
     },
@@ -118,7 +119,7 @@ const metaTags: { [key: string]: MetaTag } = {
   },
   "/our-brands": {
     title: "Our Brands | Mwananchi Communications Limited",
-    description: "Explore MCL’s brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
+    description: "Explore MCL's brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
     keywords: "Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, Tanzanian media brands",
     structuredData: [
       {
@@ -181,14 +182,14 @@ const metaTags: { [key: string]: MetaTag } = {
     ],
     og: {
       title: "Our Brands | Mwananchi Communications Limited",
-      description: "Explore MCL’s brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
+      description: "Explore MCL's brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
       type: "website",
       url: "https://www.mcl.co.tz/our-brands",
     },
     twitter: {
       card: "summary_large_image",
       title: "Our Brands | Mwananchi Communications Limited",
-      description: "Explore MCL’s brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
+      description: "Explore MCL's brands, including Mwanaclick, Mwananchi, The Citizen, Mwanaspoti, bringing news, entertainment, and insights to Tanzania and beyond.",
     },
   },
   "/company/news": {
@@ -204,6 +205,22 @@ const metaTags: { [key: string]: MetaTag } = {
       card: "summary_large_image",
       title: "Latest News & Updates from MCL",
       description: "Stay updated with the latest news, insights, and stories from MCL brands including Mwananchi, The Citizen, and Mwanaspoti.",
+    },
+  },
+  "/gallery": {
+    title: "Gallery | Mwananchi Communications Limited",
+    description: "Explore our collection of images, events, and moments captured across MCL's brands and activities.",
+    keywords: "gallery, photos, events, MCL images, Tanzania media gallery",
+    og: {
+      title: "Gallery | Mwananchi Communications Limited",
+      description: "Explore our collection of images, events, and moments captured across MCL's brands and activities.",
+      type: "website",
+      url: "https://www.mcl.co.tz/gallery",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Gallery | Mwananchi Communications Limited",
+      description: "Explore our collection of images, events, and moments captured across MCL's brands and activities.",
     },
   },
   "/company/contact-us": {
@@ -225,7 +242,7 @@ const metaTags: { [key: string]: MetaTag } = {
   },
   "/careers": {
     title: "Careers at Mwananchi Communications Limited",
-    description: "Join MCL’s dynamic team and help shape Tanzania’s media landscape. Explore career opportunities in journalism, digital media, and administration.",
+    description: "Join MCL's dynamic team and help shape Tanzania's media landscape. Explore career opportunities in journalism, digital media, and administration.",
     structuredData: {
       "@context": "https://schema.org",
       "@type": "JobPosting",
@@ -252,7 +269,7 @@ const metaTags: { [key: string]: MetaTag } = {
   },
   default: {
     title: "Mwananchi Communications Limited",
-    description: "Is a subsidiary of Nation Media Group. It is the leading print media company in Tanzania with print as well as online platforms. It was established in May 1999 as a Media Communication Limited and transformed to the advertising & Public Relations agency in year 2001 and was later acquired by Nation Media Group in the year 2002. Through Newspapers, we deliver a literate and informed audience who are opinion leaders, early adopters, and heavy consumers of different brands and service.",
+    description: "Is a subsidiary of Nation Media Group. It is a Tanzania's Leading Media  Company",
   },
 };
 
