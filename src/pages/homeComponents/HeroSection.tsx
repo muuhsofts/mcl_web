@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { EyeIcon, PlayIcon, PauseIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, UsersIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../../axios";
 
 import { AboutSliderData, SubscriptionData } from "./types";
@@ -11,19 +11,7 @@ interface HeroSectionProps {
   subscriptions?: SubscriptionData[];
 }
 
-type HeroStage = 0 | 1 | 2;
-
-const VolumeUpIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
-  </svg>
-);
-
-const VolumeOffIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6-4.72 4.72a.75.75 0 0 0-.53 1.28l4.72 4.72c.342.342.53.802.53 1.28v-9.58c0-.954-1.154-1.433-1.83-.78Zm11.78 0A9 9 0 0 0 8.25 7.5M8.25 7.5A9 9 0 0 0 2.25 12m6-4.5L2.25 12" />
-  </svg>
-);
+type HeroStage = 0 | 1;
 
 const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) => {
   const [sliderData, setSliderData] = useState<AboutSliderData[]>([]);
@@ -33,14 +21,6 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
   const [currentStage, setCurrentStage] = useState<HeroStage>(0);
   const [showSnakeMotion, setShowSnakeMotion] = useState(true);
   const [impactOffset, setImpactOffset] = useState(0);
-
-  // Video states
-  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const [videoError, setVideoError] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
 
   const sliderIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const impactIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -87,7 +67,7 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
     else fetchSubs();
   }, [subscriptions]);
 
-  // Main Slider
+  // Main Image Slider
   useEffect(() => {
     if (sliderIntervalRef.current) clearInterval(sliderIntervalRef.current);
 
@@ -109,61 +89,33 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
     };
   }, [currentStage, sliderData.length]);
 
-  // Horizontal Impact Slider
+  // Auto-slide for Impact Stage
   useEffect(() => {
-    if (currentStage !== 1 || subscriptionData.length < 4) return;
+    if (currentStage !== 1 || subscriptionData.length === 0) return;
 
     if (impactIntervalRef.current) clearInterval(impactIntervalRef.current);
 
+    const intervalTime = isMobile ? 2600 : 3200;
+
     impactIntervalRef.current = setInterval(() => {
       setImpactOffset((prev) => {
+        const maxOffset = subscriptionData.length - 1;
         const next = prev + 1;
-        const maxOffset = subscriptionData.length - 4;
+
         if (next > maxOffset) {
-          setCurrentStage(2);
+          setCurrentStage(0);
+          setSliderIndex(0);
+          setImpactOffset(0);
           return 0;
         }
         return next;
       });
-    }, 3200);
+    }, intervalTime);
 
     return () => {
       if (impactIntervalRef.current) clearInterval(impactIntervalRef.current);
     };
-  }, [currentStage, subscriptionData.length]);
-
-  // YouTube Setup
-  useEffect(() => {
-    if (currentStage !== 2 || videoError) return;
-
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName("script")[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
-    // @ts-ignore
-    window.onYouTubeIframeAPIReady = () => {
-      if (!videoContainerRef.current) return;
-      // @ts-ignore
-      playerRef.current = new YT.Player("hero-youtube-player", {
-        videoId: "3f2LulEqgrw",
-        playerVars: { autoplay: 1, mute: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, playsinline: 1 },
-        events: {
-          onReady: (event: any) => {
-            setVideoReady(true);
-            event.target.playVideo();
-            setIsVideoPlaying(true);
-            setIsMuted(true);
-          },
-          onError: () => setVideoError(true),
-        },
-      });
-    };
-
-    return () => {
-      if (playerRef.current?.destroy) playerRef.current.destroy();
-    };
-  }, [currentStage, videoError]);
+  }, [currentStage, subscriptionData.length, isMobile]);
 
   const slide = sliderData[sliderIndex];
   const imageUrl = slide?.home_img ? buildImageUrl(slide.home_img, baseURL) : "";
@@ -171,10 +123,17 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
 
   const sortedSubs = [...subscriptionData].sort((a, b) => a.subscription_id - b.subscription_id);
 
-  const getHeadingSize = () => isMobile ? "text-2xl leading-tight" : isTablet ? "text-4xl md:text-5xl" : "text-6xl xl:text-7xl 2xl:text-8xl";
-  const getDescriptionSize = () => isMobile ? "text-xs" : isTablet ? "text-sm md:text-base" : "text-lg xl:text-xl";
+  const getHeadingSize = () => 
+    isMobile ? "text-[2.1rem] leading-none" : 
+    isTablet ? "text-5xl" : 
+    "text-6xl xl:text-7xl 2xl:text-8xl";
 
-  // Snake System (unchanged)
+  const getDescriptionSize = () => 
+    isMobile ? "text-[15px] leading-tight" : 
+    isTablet ? "text-base" : 
+    "text-lg xl:text-xl";
+
+  // Snake Animation
   const snakeColors = ["#3b82f6", "#ef4444", "#8b00ff", "#10b981", "#06b6d4", "#f97316"];
   const snakePaths = [
     "M -100 280 Q 200 120 450 320 Q 750 180 1100 290 Q 1400 220 1600 300",
@@ -242,157 +201,151 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
     }
   }, [isFirstSlider, showSnakeMotion]);
 
-  // ─── Updated Our Impact Stage with #1161B9 color & reduced font sizes ───
+  // Further Reduced Desktop Impact Stage
   const renderImpactStage = () => {
-    const itemWidth = isMobile ? "168px" : isTablet ? "200px" : "235px";
+    const logoSize = isMobile 
+      ? "w-16 h-16" 
+      : isTablet 
+        ? "w-22 h-22" 
+        : "w-28 h-28";
+
+    const cardMinHeight = isMobile ? "min-h-[240px]" : "min-h-[220px]";
 
     return (
       <AnimatePresence mode="wait">
         <motion.div
           key="impact-stage"
-          className="absolute inset-0 overflow-hidden z-20"
+          className="absolute inset-0 z-40 overflow-hidden"
           style={{ background: "#1161B9" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -60 }}
+          transition={{ duration: 0.9, ease: "easeOut" }}
         >
-          {/* Subtle pattern overlay */}
           <div 
             className="absolute inset-0 opacity-10"
             style={{
               backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
-              backgroundSize: '24px 24px'
+              backgroundSize: '28px 28px'
             }}
           />
 
-          <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-6 py-16 text-center">
-            {/* Section Header - Clean and minimal */}
+          <div className="relative z-50 flex flex-col items-center justify-center min-h-screen px-5 py-12 md:py-20 text-center">
+            {/* Header */}
             <motion.div 
-              className="mb-12" 
+              className="mb-8 md:mb-12" 
               initial={{ y: 30, opacity: 0 }} 
               animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
+              transition={{ duration: 0.7 }}
             >
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-1.5 rounded-full mb-6">
-                <UsersIcon className="w-3.5 h-3.5 text-white" />
-                <span className="uppercase tracking-[3px] text-white text-[11px] font-semibold">OUR IMPACT</span>
+              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/30 px-6 py-2.5 rounded-full mb-6 shadow-xl">
+                <UsersIcon className="w-4 h-4 text-white" />
+                <span className="uppercase tracking-[3px] text-white text-xs font-semibold">OUR IMPACT</span>
               </div>
               
-              <p className="text-sm md:text-base text-white/70 font-light tracking-wide">
+              <p className="text-sm md:text-base text-white/80 font-light tracking-wide max-w-xs mx-auto">
                 Reaching millions together
               </p>
             </motion.div>
 
-            {/* Impact Cards - Horizontal Scroll with smooth animation */}
-            <div className="w-full max-w-7xl overflow-hidden px-4">
-              <motion.div
-                className="flex gap-6 justify-center"
-                animate={{ x: `calc(-${impactOffset * (parseInt(itemWidth) + 24)}px)` }}
-                transition={{ duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
-                style={{ width: `${sortedSubs.length * (parseInt(itemWidth) + 24)}px` }}
-              >
-                {sortedSubs.map((sub, idx) => (
+            {/* Cards Container */}
+            <div className="w-full max-w-md md:max-w-6xl px-4">
+              {isMobile ? (
+                // Mobile: Vertical sliding (unchanged)
+                <div className="relative h-[320px] overflow-hidden mx-auto">
                   <motion.div
-                    key={idx}
-                    className="flex-shrink-0 flex flex-col items-center text-center"
-                    style={{ width: itemWidth }}
-                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                    className="flex flex-col gap-5 absolute w-full"
+                    initial={{ y: 0 }}
+                    animate={{ y: `-${impactOffset * 325}px` }}
+                    transition={{ duration: 0.85, ease: [0.32, 0.72, 0, 1] }}
                   >
-                    {/* Logo Card - Clean white with subtle shadow */}
-                    <div className="w-36 h-32 md:w-44 md:h-40 bg-white/95 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-5 shadow-xl border border-white/20">
-                      {sub.logo_img_file ? (
-                        <img
-                          src={buildImageUrl(sub.logo_img_file, baseURL)}
-                          alt={sub.category}
-                          className="w-28 h-28 md:w-36 md:h-36 object-contain p-3"
-                        />
-                      ) : (
-                        <EyeIcon className="w-16 h-16 text-gray-400" />
-                      )}
-                    </div>
+                    {sortedSubs.map((sub, idx) => (
+                      <motion.div
+                        key={idx}
+                        className={`flex-shrink-0 w-full bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 overflow-hidden flex flex-col items-center justify-center text-center ${cardMinHeight} py-6`}
+                      >
+                        <div className="flex flex-col items-center">
+                          {sub.logo_img_file ? (
+                            <img
+                              src={buildImageUrl(sub.logo_img_file, baseURL)}
+                              alt={sub.category}
+                              className={`${logoSize} object-contain mb-4`}
+                            />
+                          ) : (
+                            <EyeIcon className="w-14 h-14 text-gray-400 mb-4" />
+                          )}
 
-                    {/* Category - Smaller, uppercase, subtle */}
-                    <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[2px] mb-1">
-                      {sub.category}
-                    </p>
+                          <p className="text-[#1161B9] text-[10px] font-semibold uppercase tracking-[2px] mb-1.5">
+                            {sub.category}
+                          </p>
 
-                    {/* Total Viewers - Reduced font, clean number display */}
-                    <p className="text-white font-bold text-2xl md:text-3xl lg:text-4xl tracking-tight">
-                      {typeof sub.total_viewers === 'number' ? sub.total_viewers.toLocaleString() : sub.total_viewers}
-                    </p>
-                    
-                  
+                          <p className="text-[#1161B9] font-bold text-3xl tracking-[-1.5px] leading-none">
+                            {typeof sub.total_viewers === 'number' 
+                              ? sub.total_viewers.toLocaleString() 
+                              : sub.total_viewers}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
                   </motion.div>
+                </div>
+              ) : (
+                // Desktop/Tablet: Further reduced height and font sizes
+                <motion.div
+                  className="flex gap-6"
+                  initial={{ x: 0 }}
+                  animate={{ 
+                    x: `calc(-${impactOffset * (210 + 24)}px)` 
+                  }}
+                  transition={{ duration: 1.0, ease: [0.25, 0.1, 0.25, 1] }}
+                  style={{ width: `${sortedSubs.length * (210 + 24)}px` }}
+                >
+                  {sortedSubs.map((sub) => (
+                    <motion.div
+                      key={sub.subscription_id}
+                      className="flex-shrink-0 flex flex-col items-center text-center w-[210px]"
+                      whileHover={{ y: -5 }}
+                    >
+                      <div className={`w-full ${cardMinHeight} bg-white/95 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-5 shadow-2xl border border-white/30 overflow-hidden`}>
+                        {sub.logo_img_file ? (
+                          <img
+                            src={buildImageUrl(sub.logo_img_file, baseURL)}
+                            alt={sub.category}
+                            className={`${logoSize} object-contain p-4`}
+                          />
+                        ) : (
+                          <EyeIcon className="w-14 h-14 text-gray-400" />
+                        )}
+                      </div>
+
+                      <p className="text-white/70 text-[10px] font-semibold uppercase tracking-[2px] mb-2">
+                        {sub.category}
+                      </p>
+
+                      <p className="text-white font-bold text-3xl lg:text-4xl tracking-[-2px] leading-none">
+                        {typeof sub.total_viewers === 'number' 
+                          ? sub.total_viewers.toLocaleString() 
+                          : sub.total_viewers}
+                      </p>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+
+            {/* Progress Dots */}
+            {!isMobile && (
+              <div className="flex gap-2 mt-10">
+                {Array.from({ length: Math.max(1, sortedSubs.length - 3) }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all duration-700 ${i === impactOffset 
+                      ? "bg-white w-8" 
+                      : "bg-white/30 w-2"}`}
+                  />
                 ))}
-              </motion.div>
-            </div>
-
-            {/* Progress Dots - Minimal */}
-            <div className="flex gap-1.5 mt-12">
-              {Array.from({ length: Math.max(1, sortedSubs.length - 3) }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 rounded-full transition-all duration-500 ${i === impactOffset 
-                    ? "bg-white w-6 shadow-md" 
-                    : "bg-white/20 w-1.5"}`}
-                />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    );
-  };
-
-  // Video Stage (unchanged)
-  const handleVideoPlayPause = () => {
-    if (!playerRef.current || !videoReady) return;
-    if (isVideoPlaying) playerRef.current.pauseVideo();
-    else playerRef.current.playVideo();
-    setIsVideoPlaying(!isVideoPlaying);
-  };
-
-  const handleVideoMuteUnmute = () => {
-    if (!playerRef.current || !videoReady) return;
-    if (isMuted) playerRef.current.unMute();
-    else playerRef.current.mute();
-    setIsMuted(!isMuted);
-  };
-
-  const renderVideoStage = () => {
-    if (videoError) {
-      return <div className="absolute inset-0 bg-black flex items-center justify-center text-white">Video unavailable</div>;
-    }
-
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div key="video-stage" className="absolute inset-0 bg-black z-30" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div ref={videoContainerRef} className="absolute inset-0">
-            <div id="hero-youtube-player" className="w-full h-full" />
-          </div>
-
-          <div className="absolute top-6 right-6 z-50 flex gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleVideoMuteUnmute}
-              className="bg-black/70 hover:bg-black/90 p-3 rounded-xl text-white border border-white/30 backdrop-blur-sm"
-            >
-              {isMuted ? <VolumeOffIcon className="w-4 h-4" /> : <VolumeUpIcon className="w-4 h-4" />}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleVideoPlayPause}
-              className="bg-black/70 hover:bg-black/90 p-3 rounded-xl text-white border border-white/30 backdrop-blur-sm"
-            >
-              {isVideoPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
-            </motion.button>
-          </div>
-
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-5 py-1.5 rounded-full text-[11px] text-white/80 flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            LIVE EXPERIENCE
+              </div>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>
@@ -409,12 +362,18 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
       style={{ opacity, scale }}
     >
       <div className="relative w-full h-screen overflow-hidden">
+        {/* Stage 0: Image Slider */}
         {currentStage === 0 && (
           <div className="absolute inset-0 z-10">
-            <img src={imageUrl} alt={slide?.heading || "Hero"} className="w-full h-full object-cover" draggable={false} />
+            <img 
+              src={imageUrl} 
+              alt={slide?.heading || "Hero"} 
+              className="w-full h-full object-cover" 
+              draggable={false} 
+            />
             {renderSnakes()}
 
-            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+            <div className="absolute bottom-16 md:bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-30">
               {sliderData.map((_, idx) => (
                 <button
                   key={idx}
@@ -427,7 +386,7 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
             <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-6 text-center text-white">
               <motion.h1
                 key={`h1-${sliderIndex}`}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`font-semibold tracking-tight mb-4 ${getHeadingSize()}`}
               >
@@ -435,9 +394,9 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
               </motion.h1>
               <motion.p
                 key={`p-${sliderIndex}`}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
+                transition={{ delay: 0.2 }}
                 className={`max-w-md mx-auto ${getDescriptionSize()}`}
               >
                 {cleanText(slide?.description || "")}
@@ -446,13 +405,12 @@ const HeroSection = memo(({ data = [], subscriptions = [] }: HeroSectionProps) =
           </div>
         )}
 
+        {/* Stage 1: Our Impact */}
         {currentStage === 1 && renderImpactStage()}
-        {currentStage === 2 && renderVideoStage()}
 
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full text-[10px] text-white/70">
-          {currentStage === 0 && "Journey"} 
-          {currentStage === 1 && "Our Impact"} 
-          {currentStage === 2 && "Live Experience"}
+        {/* Stage Indicator */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-md px-5 py-1.5 rounded-full text-xs text-white/70 font-medium">
+          {currentStage === 0 ? "Journey" : "Our Impact"}
         </div>
       </div>
     </motion.section>
