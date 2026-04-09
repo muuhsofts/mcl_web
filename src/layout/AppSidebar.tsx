@@ -60,6 +60,7 @@ const getNavItemsForRole = (roleId: number): NavItem[] => {
     { name: "News", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white">📰</span>, subItems: [{ name: "Home page", path: "/news/home" },{ name: "News", path: "/news" },{ name: "Sub-News", path: "/sub-news" }] },
     { name: "Events", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white">📅</span>, subItems: [{ name: "Events", path: "/our-events" },{ name: "Sub Events", path: "/sub-events" }] },
     { name: "Subscriptions", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white">📅</span>, subItems: [{ name: "Manage", path: "/subscriptions" }] },
+    { name: "Gallery", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white">📅</span>, subItems: [{ name: "Manage", path: "/whole-gallery" }] },
     { name: "Contact", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white">📞</span>, subItems: [{ name: "Home page", path: "/contact/home" },{ name: "Contact-us", path: "/contact-us" },{ name: "Contact Info", path: "/contact-us/info" }] },
   ];
 

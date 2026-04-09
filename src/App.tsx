@@ -179,6 +179,9 @@ import  EditSubscription  from  './pages/subscriptions/EditSubscription'
 import CertPage from './pages/CertPage';
 import  SingleNewsPage from  './pages/SingleNewsPage';
 import Gallery from './pages/Gallery'
+import AllGallery from './pages/gallery/Gallery.tsx';
+import AddToGallery from './pages/gallery/AddToGallery';
+import EditGallery from './pages/gallery/EditGallery';
 
 
 // Define props for ProtectedRoute
@@ -1230,6 +1233,31 @@ export default function App() {
 
 
 
+
+<Route
+  path="/whole-gallery"
+  element={
+    <ProtectedRoute>
+      <AllGallery  />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/add/gallery"
+  element={
+    <ProtectedRoute>
+      <AddToGallery />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/edit/gallery/:galleryId"
+  element={
+    <ProtectedRoute>
+      <EditGallery />
+    </ProtectedRoute>
+  }
+/>
 
   <Route
           path="/subscriptions"
