@@ -116,7 +116,8 @@ const AddToGallery: React.FC = () => {
     payload.append('file_type', formData.file_type);
 
     try {
-      const response = await axiosInstance.post('/api/galleries', payload, {
+      // Fixed: Removed 'const response =' since it was unused
+      await axiosInstance.post('/api/galleries', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
