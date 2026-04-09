@@ -3,17 +3,14 @@ import axiosInstance from "../axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowPathIcon, 
-  PhotoIcon, 
   PlayIcon, 
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CalendarIcon,
-  EyeIcon
+  CalendarIcon
 } from "@heroicons/react/24/outline";
 import Footer from "../components/Footer";
 import Header from "../components/header/Header"; 
-
 
 // --- INTERFACE ---
 interface GalleryItem {
@@ -31,8 +28,8 @@ const getFullMediaUrl = (path: string) => {
   return `${baseURL}/${path}`;
 };
 
-// --- LIGHTBOX MODAL COMPONENT ---
-interface LightboxProps {
+// --- NEW DETAIL MODAL ---
+interface DetailModalProps {
   items: GalleryItem[];
   currentIndex: number;
   onClose: () => void;
@@ -40,7 +37,7 @@ interface LightboxProps {
   onPrev: () => void;
 }
 
-const Lightbox: React.FC<LightboxProps> = ({ items, currentIndex, onClose, onNext, onPrev }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ items, currentIndex, onClose, onNext, onPrev }) => {
   const currentItem = items[currentIndex];
   const mediaUrl = getFullMediaUrl(currentItem?.file_path || "");
 
@@ -62,60 +59,79 @@ const Lightbox: React.FC<LightboxProps> = ({ items, currentIndex, onClose, onNex
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+        className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
         onClick={onClose}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 transition-colors"
+        <div 
+          className="bg-white rounded-3xl w-full max-w-7xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col lg:flex-row"
+          onClick={(e) => e.stopPropagation()}
         >
-          <XMarkIcon className="w-8 h-8" />
-        </button>
+          {/* LEFT: MEDIA - No Cropping */}
+          <div className="lg:w-3/5 bg-zinc-950 relative flex items-center justify-center p-8">
+            <button
+              onClick={onClose}
+              className="absolute top-6 right-6 z-20 p-3 text-white bg-black/60 hover:bg-black rounded-full transition-colors"
+            >
+              <XMarkIcon className="w-8 h-8" />
+            </button>
 
-        {/* Navigation Buttons */}
-        {currentIndex > 0 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onPrev(); }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full hover:bg-black/70"
-          >
-            <ChevronLeftIcon className="w-8 h-8" />
-          </button>
-        )}
+            {currentItem.file_type === "image" ? (
+              <img
+                src={mediaUrl}
+                alt={currentItem.title || ""}
+                className="max-h-[85vh] max-w-full object-contain rounded-2xl"
+              />
+            ) : (
+              <video
+                src={mediaUrl}
+                className="max-h-[85vh] max-w-full rounded-2xl"
+                controls
+                autoPlay
+              />
+            )}
 
-        {currentIndex < items.length - 1 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onNext(); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full hover:bg-black/70"
-          >
-            <ChevronRightIcon className="w-8 h-8" />
-          </button>
-        )}
+            {/* Navigation Arrows */}
+            {currentIndex > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPrev(); }}
+                className="absolute left-8 top-1/2 -translate-y-1/2 p-4 bg-black/70 hover:bg-black text-white rounded-2xl transition-all"
+              >
+                <ChevronLeftIcon className="w-9 h-9" />
+              </button>
+            )}
 
-        {/* Media Content */}
-        <div className="max-w-7xl max-h-[90vh] w-full mx-4" onClick={(e) => e.stopPropagation()}>
-          {currentItem.file_type === "image" ? (
-            <img
-              src={mediaUrl}
-              alt={currentItem.title || "Gallery image"}
-              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
-            />
-          ) : (
-            <video
-              src={mediaUrl}
-              className="w-full h-auto max-h-[85vh] rounded-lg"
-              controls
-              autoPlay
-            />
-          )}
-          
-          {/* Caption */}
-          <div className="mt-4 text-center text-white">
-            <h3 className="text-xl font-semibold">{currentItem.title || "Untitled"}</h3>
-            <p className="text-sm text-gray-300 mt-1">{currentItem.description || ""}</p>
-            <p className="text-xs text-gray-400 mt-2">
-              {new Date(currentItem.created_at).toLocaleDateString()}
-            </p>
+            {currentIndex < items.length - 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onNext(); }}
+                className="absolute right-8 top-1/2 -translate-y-1/2 p-4 bg-black/70 hover:bg-black text-white rounded-2xl transition-all"
+              >
+                <ChevronRightIcon className="w-9 h-9" />
+              </button>
+            )}
+          </div>
+
+          {/* RIGHT: DESCRIPTION */}
+          <div className="lg:w-2/5 p-10 lg:p-14 flex flex-col bg-white overflow-y-auto">
+            <h2 className="text-4xl font-bold text-gray-900 leading-snug mb-8">
+              {currentItem.title || "Captured Memory"}
+            </h2>
+
+            <div className="text-gray-700 text-[17px] leading-relaxed flex-1">
+              {currentItem.description || 
+                "This beautiful moment was carefully preserved. Every detail tells its own story."}
+            </div>
+
+            <div className="mt-12 pt-8 border-t flex items-center gap-3 text-gray-500">
+              <CalendarIcon className="w-5 h-5" />
+              <span>
+                {new Date(currentItem.created_at).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </span>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -127,7 +143,7 @@ const Lightbox: React.FC<LightboxProps> = ({ items, currentIndex, onClose, onNex
 const Gallery: React.FC = () => {
   const [data, setData] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
 
@@ -150,201 +166,139 @@ const Gallery: React.FC = () => {
     filter === "all" ? true : item.file_type === filter
   );
 
-  const openLightbox = (index: number) => {
+  const openModal = (index: number) => {
     setCurrentIndex(index);
-    setLightboxOpen(true);
+    setModalOpen(true);
   };
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(prev + 1, filteredData.length - 1));
-  };
+  const handleNext = () => setCurrentIndex(prev => Math.min(prev + 1, filteredData.length - 1));
+  const handlePrev = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
 
-  const handlePrev = () => {
-    setCurrentIndex((prev) => Math.max(prev - 1, 0));
-  };
-
-  // --- LOADING ---
   if (loading) {
     return (
       <>
         <Header />
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          >
-            <ArrowPathIcon className="w-12 h-12 text-[#0072bc]" />
-          </motion.div>
-          <p className="mt-4 text-gray-600 font-medium">Loading gallery...</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-zinc-100 flex items-center justify-center">
+          <div className="text-center">
+            <ArrowPathIcon className="w-16 h-16 text-[#0072bc] animate-spin mx-auto" />
+            <p className="mt-6 text-gray-600">Loading gallery...</p>
+          </div>
         </div>
         <Footer />
       </>
     );
   }
 
-  // --- STATS ---
-  const imageCount = data.filter(item => item.file_type === "image").length;
-  const videoCount = data.filter(item => item.file_type === "video").length;
+  const imageCount = data.filter(i => i.file_type === "image").length;
+  const videoCount = data.filter(i => i.file_type === "video").length;
 
-  // --- UI ---
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        {/* HERO SECTION */}
-        <div className="relative bg-gradient-to-r from-[#003459] via-[#0072bc] to-[#003459] text-white overflow-hidden">
-          <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative max-w-7xl mx-auto px-4 py-16 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-zinc-100">
+
+        {/* Minimal Hero Section */}
+        <div className="bg-[#003459] py-20 text-white">
+          <div className="max-w-5xl mx-auto px-6 text-center">
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              className="text-6xl md:text-7xl font-bold tracking-tight"
             >
-              <h1 className="text-5xl md:text-6xl font-bold mb-4">Gallery</h1>
-              <p className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto">
-                Explore our collection of memorable moments.
-              </p>
-            </motion.div>
+              Gallery
+            </motion.h1>
+            <p className="mt-5 text-xl text-white/75 max-w-md mx-auto">
+              Moments worth remembering
+            </p>
           </div>
         </div>
 
-        {/* STATS BAR */}
-        <div className="bg-white shadow-md sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#0072bc]">{data.length}</div>
-                  <div className="text-xs text-gray-600">Total Items</div>
+        {/* Filter Bar */}
+        <div className="sticky top-0 z-40 bg-white border-b">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-12">
+                <div>
+                  <div className="text-4xl font-semibold text-emerald-600">{imageCount}</div>
+                  <div className="text-xs tracking-widest text-gray-500">IMAGES</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{imageCount}</div>
-                  <div className="text-xs text-gray-600">Images</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{videoCount}</div>
-                  <div className="text-xs text-gray-600">Videos</div>
+                <div>
+                  <div className="text-4xl font-semibold text-violet-600">{videoCount}</div>
+                  <div className="text-xs tracking-widest text-gray-500">VIDEOS</div>
                 </div>
               </div>
-              
-              {/* FILTER BUTTONS */}
-              <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setFilter("all")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    filter === "all" 
-                      ? "bg-[#0072bc] text-white shadow-md" 
-                      : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setFilter("image")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                    filter === "image" 
-                      ? "bg-[#0072bc] text-white shadow-md" 
-                      : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  <PhotoIcon className="w-4 h-4" />
-                  Images
-                </button>
-                <button
-                  onClick={() => setFilter("video")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                    filter === "video" 
-                      ? "bg-[#0072bc] text-white shadow-md" 
-                      : "text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  <PlayIcon className="w-4 h-4" />
-                  Videos
-                </button>
+
+              <div className="flex bg-zinc-100 rounded-full p-1.5">
+                {["all", "image", "video"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setFilter(type as "all" | "image" | "video")}
+                    className={`px-7 py-3 rounded-full text-sm font-medium transition-all ${
+                      filter === type 
+                        ? "bg-white text-[#0072bc] shadow-sm" 
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    {type === "all" ? "All" : type === "image" ? "Images" : "Videos"}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* MASONRY GRID */}
-        <div className="max-w-7xl mx-auto px-4 py-12">
+        {/* Gallery Grid - No Cropping */}
+        <div className="max-w-7xl mx-auto px-6 py-16">
           {filteredData.length > 0 ? (
-            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
               {filteredData.map((item, index) => {
                 const mediaUrl = getFullMediaUrl(item.file_path);
-                
+
                 return (
                   <motion.div
                     key={item.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
-                    whileHover={{ y: -5 }}
-                    className="break-inside-avoid cursor-pointer group"
-                    onClick={() => openLightbox(index)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    whileHover={{ y: -10 }}
+                    className="group cursor-pointer"
+                    onClick={() => openModal(index)}
                   >
-                    <div className="relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300">
-                      {/* MEDIA CONTAINER */}
-                      <div className="relative overflow-hidden bg-gray-200">
+                    <div className="relative bg-white rounded-3xl overflow-hidden shadow hover:shadow-2xl transition-all duration-300">
+                      {/* Media - No Cropping */}
+                      <div className="relative pt-[75%] bg-zinc-100">   {/* Maintains nice proportion without cropping */}
                         {item.file_type === "image" ? (
-                          <>
-                            <img
-                              src={mediaUrl}
-                              alt={item.title || "Gallery image"}
-                              className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                              <EyeIcon className="w-10 h-10 text-white" />
-                            </div>
-                          </>
+                          <img
+                            src={mediaUrl}
+                            alt={item.title || ""}
+                            className="absolute inset-0 w-full h-full object-contain p-4 transition-transform group-hover:scale-105 duration-500"
+                          />
                         ) : (
-                          <div className="relative">
+                          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
                             <video
                               src={mediaUrl}
-                              className="w-full h-auto object-cover"
+                              className="w-full h-full object-contain"
                               preload="metadata"
+                              muted
                             />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                              <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <PlayIcon className="w-8 h-8 text-[#0072bc] ml-1" />
-                              </div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <PlayIcon className="w-20 h-20 text-white/90" />
                             </div>
                           </div>
                         )}
-                        
-                        {/* TYPE BADGE */}
-                        <div className="absolute top-3 left-3">
-                          <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-md ${
-                            item.file_type === "image" 
-                              ? "bg-green-600/80 text-white" 
-                              : "bg-purple-600/80 text-white"
-                          }`}>
-                            {item.file_type === "image" ? (
-                              <div className="flex items-center gap-1">
-                                <PhotoIcon className="w-3 h-3" />
-                                Image
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <PlayIcon className="w-3 h-3" />
-                                Video
-                              </div>
-                            )}
-                          </span>
-                        </div>
                       </div>
 
-                      {/* CONTENT */}
-                      <div className="p-4">
-                        <h3 className="text-base font-semibold text-gray-800 line-clamp-1 group-hover:text-[#0072bc] transition-colors">
-                          {item.title || "Untitled"}
+                      {/* Card Content */}
+                      <div className="p-7">
+                        <h3 className="font-semibold text-xl text-gray-900 line-clamp-2 group-hover:text-[#0072bc] transition-colors">
+                          {item.title || "Untitled Moment"}
                         </h3>
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                          {item.description || "No description available"}
+                        <p className="mt-4 text-gray-600 text-[15px] leading-relaxed line-clamp-3">
+                          {item.description || "A beautiful moment captured forever."}
                         </p>
-                        <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-                          <CalendarIcon className="w-3 h-3" />
+                        <div className="mt-6 text-xs text-gray-500 flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4" />
                           {new Date(item.created_at).toLocaleDateString()}
                         </div>
                       </div>
@@ -354,30 +308,19 @@ const Gallery: React.FC = () => {
               })}
             </div>
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-20"
-            >
-              <div className="bg-white rounded-full w-24 h-24 mx-auto flex items-center justify-center shadow-lg">
-                <PhotoIcon className="w-12 h-12 text-gray-400" />
-              </div>
-              <h3 className="mt-6 text-xl font-semibold text-gray-700">No items found</h3>
-              <p className="mt-2 text-gray-500">
-                {filter !== "all" 
-                  ? `No ${filter}s available in the gallery` 
-                  : "The gallery is currently empty"}
-              </p>
-            </motion.div>
+            <div className="text-center py-24">
+              <div className="text-7xl mb-4">📷</div>
+              <h3 className="text-3xl font-light text-gray-700">No moments to show</h3>
+            </div>
           )}
         </div>
 
-        {/* LIGHTBOX COMPONENT - FIXED: Now actually rendered */}
-        {lightboxOpen && (
-          <Lightbox
+        {/* Modal */}
+        {modalOpen && (
+          <DetailModal
             items={filteredData}
             currentIndex={currentIndex}
-            onClose={() => setLightboxOpen(false)}
+            onClose={() => setModalOpen(false)}
             onNext={handleNext}
             onPrev={handlePrev}
           />
