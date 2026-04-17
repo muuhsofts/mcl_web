@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcl-app-deployment
+  namespace: mcl-app
+  labels:
+    app: mcl-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcl-app
+  template:
+    metadata:
+      labels:
+        app: mcl-app
+    spec:
+      containers:
+      - name: mcl-app-container
+        image: mudhihirdocker/mcl-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcl-app-service
+  namespace: mcl-app
+spec:
+  selector:
+    app: mcl-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer
