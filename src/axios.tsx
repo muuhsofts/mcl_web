@@ -1,18 +1,11 @@
 import axios from 'axios';
 
-// ✅ Environment‑aware base URL
-// - Local (dev): '/api' → Vite proxy forwards to https://cpanel.mcl.co.tz
-// - Production:  full URL → calls backend directly (requires CORS support)
-const baseURL = import.meta.env.DEV
-  ? '/api'
-  : 'https://cpanel.mcl.co.tz/api';
-
 const axiosInstance = axios.create({
-  baseURL,
+  baseURL: 'https://cpanel.mcl.co.tz/',   // direct backend URL
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor: adds auth token
+// Request interceptor – adds auth token
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -22,7 +15,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401
+// Response interceptor – handle 401
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
