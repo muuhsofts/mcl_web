@@ -4,7 +4,7 @@ import axios from 'axios';
 // Create axios instance with base URL
 const axiosInstance = axios.create({
 
-    baseURL: 'https://cpanel.mcl.co.tz/',
+    baseURL: 'https://cpanel.mcl.co.tz',
     // baseURL: 'http://127.0.0.1:8000/',
   headers: {
     'Content-Type': 'application/json',
