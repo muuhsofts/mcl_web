@@ -9,25 +9,19 @@ import {
   MwananchiAboutData,
   AboutCardData,
   SubscriptionData,
-  ValueData,
   LandingLoader,
-} from "./components/about/aboutCommon"; // fixed path
+} from "./components/about/aboutCommon";
 import AboutHeroSection from "./components/about/AboutHeroSection";
 import AboutMwananchiSection from "./components/about/AboutMwananchiSection";
-import VisionMissionSection from "./components/about/VisionMissionSection";
-import OurValuesSection from "./components/about/OurValuesSection";
 import SubscriptionCountersSection from "./components/about/SubscriptionCountersSection";
 import AboutContentSection from "./components/about/AboutContentSection";
-import ValueModal from "./components/about/ValueModal";
 
 const AboutFTSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sliderData, setSliderData] = useState<AboutSliderData[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
   const [mwananchiContent, setMwananchiContent] = useState<MwananchiAboutData | null>(null);
-  const [values, setValues] = useState<ValueData[]>([]);
   const [cards, setCards] = useState<AboutCardData[]>([]);
-  const [selectedValue, setSelectedValue] = useState<ValueData | null>(null);
 
   useEffect(() => {
     const loadPageData = async () => {
@@ -35,7 +29,6 @@ const AboutFTSection: React.FC = () => {
         axiosInstance.get<AboutSliderData[]>("/api/slider-imgs"),
         axiosInstance.get<{ data: SubscriptionData[] }>("/api/allsubscriptions"),
         axiosInstance.get<{ records: MwananchiAboutData[] }>("/api/about-mwananchi/all"),
-        axiosInstance.get<{ values: ValueData[] }>("/api/values/all"),
         axiosInstance.get("/api/latestbrand"),
         axiosInstance.get("/api/latestnew"),
         axiosInstance.get("/api/latestEvent"),
@@ -71,16 +64,6 @@ const AboutFTSection: React.FC = () => {
         toast.error("Failed to fetch company information.");
       }
 
-      if (
-        results[3].status === "fulfilled" &&
-        Array.isArray(results[3].value.data.values)
-      )
-        setValues(results[3].value.data.values);
-      else if (results[3].status === "rejected") {
-        console.error("Failed to fetch company values:", results[3].reason);
-        toast.error("Failed to fetch company values.");
-      }
-
       const createCard = (
         data: any,
         type: AboutCardData["type"],
@@ -104,23 +87,23 @@ const AboutFTSection: React.FC = () => {
       };
 
       const potentialCards: (AboutCardData | null)[] = [];
-      if (results[4].status === "fulfilled")
+      if (results[3].status === "fulfilled")
         potentialCards.push(
           createCard(
-            results[4].value.data,
+            results[3].value.data,
             "Brand",
             "brand_id",
-            results[4].value.data?.category || "Our Brand",
+            results[3].value.data?.category || "Our Brand",
             "description",
             "brand_img",
             "/our-brands",
             "created_at"
           )
         );
-      if (results[5].status === "fulfilled")
+      if (results[4].status === "fulfilled")
         potentialCards.push(
           createCard(
-            results[5].value.data?.news,
+            results[4].value.data?.news,
             "News",
             "news_id",
             "Latest News",
@@ -130,13 +113,13 @@ const AboutFTSection: React.FC = () => {
             "created_at"
           )
         );
-      if (results[6].status === "fulfilled")
+      if (results[5].status === "fulfilled")
         potentialCards.push(
           createCard(
-            results[6].value.data?.event,
+            results[5].value.data?.event,
             "Events",
             "event_id",
-            results[6].value.data?.event?.event_category || "Latest Event",
+            results[5].value.data?.event?.event_category || "Latest Event",
             "description",
             "img_file",
             "/all-events",
@@ -163,11 +146,6 @@ const AboutFTSection: React.FC = () => {
         theme="colored"
       />
       <AnimatePresence>
-        {selectedValue && (
-          <ValueModal value={selectedValue} onClose={() => setSelectedValue(null)} />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
         {isLoading && <LandingLoader />}
       </AnimatePresence>
       {!isLoading && (
@@ -176,17 +154,8 @@ const AboutFTSection: React.FC = () => {
             <AboutHeroSection data={sliderData} />
           </header>
           <main className="flex-grow">
-            {/* Added id for About Mwananchi section */}
             <section id="about-mwananchi">
               <AboutMwananchiSection content={mwananchiContent} />
-            </section>
-            {/* Added id for Vision & Mission section */}
-            <section id="vision-mission">
-              <VisionMissionSection />
-            </section>
-            {/* Added id for Our Values section */}
-            <section id="our-values">
-              <OurValuesSection values={values} onCardClick={setSelectedValue} />
             </section>
             <SubscriptionCountersSection subscriptions={subscriptions} />
             <AboutContentSection cards={cards} />

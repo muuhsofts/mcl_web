@@ -129,7 +129,8 @@ const EditOurEvent: React.FC = () => {
     }
 
     try {
-      const response = await axiosInstance.post(`/api/events/${event_id}`, payload, {
+      // ✅ FIXED: Use the correct update endpoint
+      const response = await axiosInstance.post(`/api/events/${event_id}/update`, payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

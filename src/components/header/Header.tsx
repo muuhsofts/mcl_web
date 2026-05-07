@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Place your logo.png inside your `src/assets` folder.
 import mclLogo from '../../assets/logo.png';
 
 // --- Interfaces ---
@@ -24,12 +23,11 @@ interface MobileMenuProps {
   onClose: () => void;
 }
 
-// --- Constant Data ---
-// About Us submenu items – point to sections on the About page
+// Updated About Us submenu – first item triggers scroll to section instead of navigation
 const aboutUsMenuItems: NavItem[] = [
-  { label: "About Us", path: "/#about-mwananchi" },
-  { label: "Vision & Mission", path: "/#vision-mission" },
-  { label: "Our Values", path: "/#our-values" },
+  { label: "About Us", path: "#about-mwananchi-section" }, // Will trigger scroll
+  { label: "Vision & Mission", path: "/vision-mission" },
+  { label: "Our Values", path: "/our-values" },
 ];
 
 const companyMenuItems: NavItem[] = [
@@ -42,10 +40,9 @@ const careersMenuItems: NavItem[] = [
   { label: "Vacancies", path: "https://careers.mcl.co.tz" },
 ];
 
-
-
+// Main nav items - About Us top-level will use custom scroll behavior
 const navItems: NavItem[] = [
-  { label: "About Us", path: "/", dropdown: aboutUsMenuItems },
+  { label: "About Us", path: "#about-mwananchi-section", dropdown: aboutUsMenuItems }, // Path is a fragment, will be handled by custom click
   { label: "Company", path: "", dropdown: companyMenuItems },
   { label: "Our Brands", path: "/our-brands" },
   { label: "News and Updates", path: "/company/news" },
@@ -56,14 +53,32 @@ const navItems: NavItem[] = [
 
 const navLinkClass = "relative no-underline font-semibold text-base uppercase text-white transition-opacity duration-200 tracking-tight hover:underline hover:underline-offset-8 hover:opacity-100";
 
-// --- Helper: smooth scroll to element after navigation ---
+// Helper function to scroll to the AboutMwananchiSection
+const scrollToAboutSection = () => {
+  const element = document.getElementById('about-mwananchi-section');
+  if (element) {
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    // Fallback: if the element doesn't exist yet (e.g., page not fully loaded), wait a bit and try again
+    setTimeout(() => {
+      const retryElement = document.getElementById('about-mwananchi-section');
+      if (retryElement) {
+        retryElement.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        console.warn("AboutMwananchiSection not found on the page. Make sure an element with id 'about-mwananchi-section' exists.");
+      }
+    }, 100);
+  }
+};
+
+// Helper for optional hash scroll (for other sections if needed)
 const handleSmoothScroll = (hash: string) => {
   if (hash) {
     const element = document.getElementById(hash.substring(1));
     if (element) {
       setTimeout(() => {
         element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100); // slight delay to allow page navigation
+      }, 100);
     }
   }
 };
@@ -81,16 +96,32 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ isOpen, items, onClose }) =
         {items.map((item) => {
           const isExternal = item.path.startsWith("http");
           const isHashLink = item.path.includes("#");
+          // Special handling for "About Us" submenu item linking to the section
+          const isAboutSubmenu = item.label === "About Us" && item.path === "#about-mwananchi-section";
           const itemClasses = "block relative no-underline px-4 py-2 text-xs font-semibold uppercase text-white hover:opacity-100 opacity-90 hover:underline transition-all duration-200 text-left rounded-md mx-2";
 
-          if (isExternal) {
+          if (isAboutSubmenu) {
+            // Render as button that scrolls to AboutMwananchiSection
+            return (
+              <button
+                key={item.label}
+                className={itemClasses}
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToAboutSection();
+                  onClose();
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          } else if (isExternal) {
             return (
               <a key={item.label} href={item.path} className={itemClasses} target="_blank" rel="noopener noreferrer" onClick={onClose}>
                 {item.label}
               </a>
             );
           } else if (isHashLink) {
-            // For hash links, use a regular <a> with onClick to handle scroll
             return (
               <a
                 key={item.label}
@@ -99,11 +130,9 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ isOpen, items, onClose }) =
                 onClick={(e) => {
                   e.preventDefault();
                   onClose();
-                  // Navigate to the base path (e.g., "/") then scroll
                   const [basePath, hash] = item.path.split("#");
-                  if (window.location.pathname !== basePath) {
+                  if (window.location.pathname !== basePath && basePath !== "") {
                     window.location.href = basePath;
-                    // after navigation, scroll will be triggered by useEffect in Header
                   } else {
                     handleSmoothScroll(`#${hash}`);
                   }
@@ -125,74 +154,112 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ isOpen, items, onClose }) =
   </motion.div>
 );
 
-const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, navItems, onClose }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.nav
-        className="absolute top-full left-0 w-full bg-[#0A51A1] lg:hidden p-6 max-h-[calc(100vh-5.5rem)] overflow-y-auto"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        {navItems.map((item) => (
-          <div key={item.label} className="relative py-3 text-center">
-            <NavLink
-              to={item.path}
-              className={({ isActive }) => `${navLinkClass} block ${isActive ? "opacity-100" : "opacity-80"}`}
-              onClick={onClose}
-            >
-              {item.label}
-            </NavLink>
-            {item.dropdown && (
-              <div className="mt-4 space-y-3 bg-white/5 rounded-lg p-3">
-                {item.dropdown.map((subItem) => {
-                  const isExternal = subItem.path.startsWith("http");
-                  const isHashLink = subItem.path.includes("#");
-                  const subItemClasses = "block relative no-underline text-sm font-semibold uppercase text-white/80 hover:text-white hover:underline";
+const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, navItems, onClose }) => {
+  // Helper to render a single menu item (with potential dropdown)
+  const renderMobileNavItem = (item: NavItem) => {
+    const isAboutMain = item.label === "About Us";
+    const mainItemClasses = `${navLinkClass} block ${isAboutMain ? "cursor-pointer" : ""}`;
 
-                  if (isExternal) {
-                    return (
-                      <a key={subItem.label} href={subItem.path} className={subItemClasses} target="_blank" rel="noopener noreferrer" onClick={onClose}>
-                        {subItem.label}
-                      </a>
-                    );
-                  } else if (isHashLink) {
-                    return (
-                      <a
-                        key={subItem.label}
-                        href={subItem.path}
-                        className={subItemClasses}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onClose();
-                          const [basePath, hash] = subItem.path.split("#");
-                          if (window.location.pathname !== basePath) {
-                            window.location.href = basePath;
-                          } else {
-                            handleSmoothScroll(`#${hash}`);
-                          }
-                        }}
-                      >
-                        {subItem.label}
-                      </a>
-                    );
-                  } else {
-                    return (
-                      <Link key={subItem.label} to={subItem.path} className={subItemClasses} onClick={onClose}>
-                        {subItem.label}
-                      </Link>
-                    );
-                  }
-                })}
-              </div>
-            )}
+    return (
+      <div key={item.label} className="relative py-3 text-center">
+        {isAboutMain ? (
+          <button
+            className={mainItemClasses}
+            onClick={(e) => {
+              e.preventDefault();
+              scrollToAboutSection();
+              onClose();
+            }}
+          >
+            {item.label}
+          </button>
+        ) : (
+          <NavLink
+            to={item.path}
+            className={({ isActive }) => `${navLinkClass} block ${isActive ? "opacity-100" : "opacity-80"}`}
+            onClick={onClose}
+          >
+            {item.label}
+          </NavLink>
+        )}
+        {item.dropdown && (
+          <div className="mt-4 space-y-3 bg-white/5 rounded-lg p-3">
+            {item.dropdown.map((subItem) => {
+              const isExternal = subItem.path.startsWith("http");
+              const isHashLink = subItem.path.includes("#");
+              const isAboutSubmenu = subItem.label === "About Us" && subItem.path === "#about-mwananchi-section";
+              const subItemClasses = "block relative text-sm font-semibold uppercase text-white/80 hover:text-white hover:underline";
+
+              if (isAboutSubmenu) {
+                return (
+                  <button
+                    key={subItem.label}
+                    className={subItemClasses}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      scrollToAboutSection();
+                      onClose();
+                    }}
+                  >
+                    {subItem.label}
+                  </button>
+                );
+              } else if (isExternal) {
+                return (
+                  <a key={subItem.label} href={subItem.path} className={subItemClasses} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+                    {subItem.label}
+                  </a>
+                );
+              } else if (isHashLink) {
+                return (
+                  <a
+                    key={subItem.label}
+                    href={subItem.path}
+                    className={subItemClasses}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onClose();
+                      const [basePath, hash] = subItem.path.split("#");
+                      if (window.location.pathname !== basePath && basePath !== "") {
+                        window.location.href = basePath;
+                      } else {
+                        handleSmoothScroll(`#${hash}`);
+                      }
+                    }}
+                  >
+                    {subItem.label}
+                  </a>
+                );
+              } else {
+                return (
+                  <Link key={subItem.label} to={subItem.path} className={subItemClasses} onClick={onClose}>
+                    {subItem.label}
+                  </Link>
+                );
+              }
+            })}
           </div>
-        ))}
-      </motion.nav>
-    )}
-  </AnimatePresence>
-);
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.nav
+          className="absolute top-full left-0 w-full bg-[#0A51A1] lg:hidden p-6 max-h-[calc(100vh-5.5rem)] overflow-y-auto"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          {navItems.map(renderMobileNavItem)}
+        </motion.nav>
+      )}
+    </AnimatePresence>
+  );
+};
 
 // --- Main Header Component ---
 const Header: React.FC = () => {
@@ -200,7 +267,7 @@ const Header: React.FC = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
 
-  // Handle hash links after navigation
+  // Handle hash changes for other sections if needed
   useEffect(() => {
     if (location.hash) {
       handleSmoothScroll(location.hash);
@@ -216,62 +283,79 @@ const Header: React.FC = () => {
     >
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-16 lg:px-15 py-4">
         <div className="flex items-center justify-start gap-x-12">
-          {/* Logo container */}
           <Link to="/" className="flex-shrink-0 lg:px-9">
             <img src={mclLogo} alt="MCL Logo" className="h-16 md:h-20 w-auto object-contain" />
           </Link>
 
-          {/* Navigation links container */}
           <nav className="items-center hidden gap-12 lg:flex">
-            {navItems.map((item) => (
-              <div
-                key={item.label}
-                className="relative"
-                onMouseEnter={() => item.dropdown && setOpenDropdown(item.label)}
-                onMouseLeave={() => item.dropdown && setOpenDropdown(null)}
-              >
-                <div className="relative">
-                  <NavLink
-                    to={item.path}
-                    className={({ isActive }) => `${navLinkClass} text-center ${isActive ? "opacity-100" : "opacity-80"}`}
-                  >
-                    {item.label}
-                  </NavLink>
+            {navItems.map((item) => {
+              const isAboutMain = item.label === "About Us";
+              // Handle custom scroll for "About Us" top-level link
+              const handleAboutClick = (e: React.MouseEvent) => {
+                if (isAboutMain) {
+                  e.preventDefault();
+                  scrollToAboutSection();
+                  setOpenDropdown(null);
+                }
+              };
 
-                  {/* Animated dot for News item */}
-                  {item.label === "News" && (
-                    <motion.div
-                      className="absolute -top-1 -right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full"
-                      animate={{
-                        scale: [1, 1.4, 1],
-                        boxShadow: [
-                          "0 0 0 0 rgba(239, 68, 68, 0.6)",
-                          "0 0 0 5px rgba(239, 68, 68, 0)",
-                        ],
-                      }}
-                      transition={{
-                        duration: 1.8,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      style={{ pointerEvents: 'none' }}
+              return (
+                <div
+                  key={item.label}
+                  className="relative"
+                  onMouseEnter={() => item.dropdown && setOpenDropdown(item.label)}
+                  onMouseLeave={() => item.dropdown && setOpenDropdown(null)}
+                >
+                  <div className="relative">
+                    {isAboutMain ? (
+                      <button
+                        className={`${navLinkClass} text-center ${location.pathname === "/" ? "opacity-100" : "opacity-80"}`}
+                        onClick={handleAboutClick}
+                      >
+                        {item.label}
+                      </button>
+                    ) : (
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) => `${navLinkClass} text-center ${isActive ? "opacity-100" : "opacity-80"}`}
+                      >
+                        {item.label}
+                      </NavLink>
+                    )}
+
+                    {item.label === "News" && (
+                      <motion.div
+                        className="absolute -top-1 -right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full"
+                        animate={{
+                          scale: [1, 1.4, 1],
+                          boxShadow: [
+                            "0 0 0 0 rgba(239, 68, 68, 0.6)",
+                            "0 0 0 5px rgba(239, 68, 68, 0)",
+                          ],
+                        }}
+                        transition={{
+                          duration: 1.8,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    )}
+                  </div>
+
+                  {item.dropdown && (
+                    <DropdownMenu
+                      isOpen={openDropdown === item.label}
+                      items={item.dropdown}
+                      onClose={() => setOpenDropdown(null)}
                     />
                   )}
                 </div>
-
-                {item.dropdown && (
-                  <DropdownMenu
-                    isOpen={openDropdown === item.label}
-                    items={item.dropdown}
-                    onClose={() => setOpenDropdown(null)}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </div>
 
-        {/* Mobile menu button */}
         <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2">
           <button
             className="lg:hidden text-white z-50"

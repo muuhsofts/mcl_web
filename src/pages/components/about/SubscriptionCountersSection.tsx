@@ -1,28 +1,7 @@
 // components/about/SubscriptionCountersSection.tsx
-import React from "react";
-import { motion } from "framer-motion";
-import CountUp from "react-countup";
-import { SubscriptionData, buildImageUrl, SectionHeader, AnimatedText } from "./aboutCommon";
-
-// Helper: convert string like "20.4K", "2.9 Million+", "25 Million+" to a numeric value for CountUp
-const parseCountValue = (value: string): number => {
-  if (!value) return 0;
-  const lower = value.toLowerCase().trim();
-  const clean = lower.replace(/\+/g, "").trim();
-  if (clean.includes("million")) {
-    const num = parseFloat(clean.replace("million", "").trim());
-    return isNaN(num) ? 0 : num * 1_000_000;
-  }
-  if (clean.includes("k")) {
-    const num = parseFloat(clean.replace("k", "").trim());
-    return isNaN(num) ? 0 : num * 1_000;
-  }
-  if (clean.includes("–") || clean.includes("-")) {
-    return 0;
-  }
-  const num = parseFloat(clean);
-  return isNaN(num) ? 0 : num;
-};
+import React, { useRef, useEffect } from "react";
+import { motion, useAnimation, useInView } from "framer-motion";
+import { SubscriptionData, buildImageUrl, AnimatedText } from "./aboutCommon";
 
 interface SubscriptionItemProps {
   subscription: SubscriptionData;
@@ -30,21 +9,17 @@ interface SubscriptionItemProps {
 }
 
 const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index }) => {
-  const totalViewersStr = subscription.total_viewers;
-  const numericValue = parseCountValue(totalViewersStr);
-  const isRange = totalViewersStr.includes("–") || totalViewersStr.includes("-");
-
   return (
     <motion.div
-      className="flex-shrink-0 w-56 mx-2 sm:mx-3"
-      initial={{ opacity: 0, y: 15 }}
+      className="flex-shrink-0 w-64 mx-2 sm:mx-3"
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
-      <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 h-48 flex flex-col items-center justify-center p-3 border border-gray-100">
-        {/* Logo - smaller */}
-        <div className="w-14 h-14 mb-2 flex items-center justify-center bg-gray-50 rounded-full p-1.5 border-2 border-[#0A51A1] shadow-sm">
+      <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 h-56 flex flex-col items-center justify-center p-4 border border-gray-100">
+        {/* Enlarged logo container */}
+        <div className="w-24 h-24 mb-3 flex items-center justify-center bg-gray-50 rounded-full p-2 border-2 border-[#0A51A1] shadow-md">
           {subscription.logo_img_file ? (
             <img
               src={buildImageUrl(subscription.logo_img_file) || ""}
@@ -52,49 +27,26 @@ const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index
               className="w-full h-full object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
-                  "https://via.placeholder.com/56x56?text=Logo";
+                  "https://via.placeholder.com/96x96?text=Logo";
               }}
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-[10px]">
+            <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-sm">
               No Logo
             </div>
           )}
         </div>
 
-        {/* CountUp number - smaller font */}
-        <div className="text-xl sm:text-2xl font-extrabold text-[#ed1c24] font-inter tracking-tight mb-0.5 text-center leading-tight">
-          {isRange ? (
-            <span className="text-base sm:text-lg">{totalViewersStr}</span>
-          ) : numericValue > 0 ? (
-            <CountUp
-              start={0}
-              end={numericValue}
-              duration={2}
-              formattingFn={(value: number) => {
-                if (totalViewersStr.toLowerCase().includes("million")) {
-                  const millions = value / 1_000_000;
-                  return `${millions.toFixed(1)}M+`;
-                }
-                if (totalViewersStr.toLowerCase().includes("k")) {
-                  const thousands = value / 1_000;
-                  return `${thousands.toFixed(1)}K`;
-                }
-                return new Intl.NumberFormat("en-US").format(value);
-              }}
-              enableScrollSpy={true}
-              scrollSpyOnce={true}
-            />
-          ) : (
-            <span className="text-base sm:text-lg">{totalViewersStr}</span>
-          )}
+        {/* Plain text from backend – slightly larger */}
+        <div className="text-xl sm:text-2xl font-extrabold text-[#ed1c24] font-inter tracking-tight mb-1 text-center leading-tight">
+          {subscription.total_viewers}
         </div>
 
-        {/* Category - smaller, lighter */}
+        {/* Category label */}
         <AnimatedText
           text={subscription.category}
-          className="text-[11px] sm:text-xs font-medium text-gray-500 font-inter uppercase tracking-wide text-center"
+          className="text-xs sm:text-sm font-medium text-gray-500 font-inter uppercase tracking-wide text-center"
         />
       </div>
     </motion.div>
@@ -104,6 +56,16 @@ const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index
 const SubscriptionCountersSection: React.FC<{ subscriptions: SubscriptionData[] }> = ({
   subscriptions,
 }) => {
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { once: true, amount: 0.2 });
+  const controls = useAnimation();
+
+  useEffect(() => {
+    if (isInView) {
+      controls.start("animate");
+    }
+  }, [isInView, controls]);
+
   if (!subscriptions.length) return null;
 
   // Sort by sort_order (ascending)
@@ -113,30 +75,40 @@ const SubscriptionCountersSection: React.FC<{ subscriptions: SubscriptionData[] 
     return orderA - orderB;
   });
 
-  // Duplicate array for seamless marquee
+  // Duplicate for seamless marquee
   const marqueeItems = [...sortedSubscriptions, ...sortedSubscriptions];
-  const marqueeDuration = sortedSubscriptions.length * 2.5; // faster marquee
+  const marqueeDuration = sortedSubscriptions.length * 1.8;
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-[#0A51A1] to-[#073b75] overflow-hidden">
+    <section
+      ref={sectionRef}
+      className="py-4 sm:py-6 lg:py-8 bg-gradient-to-br from-[#0A51A1] to-[#073b75] overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* SectionHeader already includes underline and proper spacing */}
-        <SectionHeader>Our Impact</SectionHeader>
-        {/* Extra spacing after header */}
-        <div className="mt-4"></div>
+        {/* Centered heading with short red underline */}
+        <div className="text-center mb-5">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-inter">
+            Our Impact
+          </h2>
+          <div className="w-16 h-1 bg-red-500 mx-auto mt-2 rounded-full"></div>
+        </div>
       </div>
 
-      {/* Horizontal Marquee */}
-      <div className="relative w-full mt-8 overflow-hidden">
+      <div className="relative w-full mt-4 overflow-hidden group">
         <motion.div
           className="flex"
-          animate={{ x: ["0%", "-50%"] }}
+          variants={{
+            animate: { x: ["0%", "-50%"] },
+          }}
+          initial={{ x: "0%" }}
+          animate={controls}
           transition={{
             ease: "linear",
             duration: marqueeDuration,
             repeat: Infinity,
           }}
           style={{ width: "fit-content" }}
+          whileHover={{ animationPlayState: "paused" }}
         >
           {marqueeItems.map((sub, idx) => (
             <SubscriptionItem
@@ -148,10 +120,10 @@ const SubscriptionCountersSection: React.FC<{ subscriptions: SubscriptionData[] 
         </motion.div>
       </div>
 
-      {/* Subtle fade effect on edges (optional) */}
-      <div className="relative mt-4">
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[#0A51A1] to-transparent z-10" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#0A51A1] to-transparent z-10" />
+      {/* Edge fades – optional, kept for visual polish */}
+      <div className="relative mt-2">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#0A51A1] to-transparent z-10" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#0A51A1] to-transparent z-10" />
       </div>
     </section>
   );

@@ -8,9 +8,13 @@ const AboutMwananchiSection: React.FC<{ content: MwananchiAboutData | null }> = 
   if (!content) return null;
   const paragraphs = content.description.split(/\n\s*\n/).filter((p) => p.trim());
   return (
-    <section className="py-16 sm:py-20 lg:py-28 bg-white">
+    <section
+      id="about-mwananchi-section"
+      className="py-8 sm:py-12 lg:py-16 bg-white"  
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-stretch">
+          {/* left column – text */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -41,6 +45,7 @@ const AboutMwananchiSection: React.FC<{ content: MwananchiAboutData | null }> = 
               ))}
             </motion.div>
           </motion.div>
+          {/* right column – video */}
           {content.video_link && (
             <motion.div
               className="w-full"

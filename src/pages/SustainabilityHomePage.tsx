@@ -3,7 +3,6 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  ArrowPathIcon,
   InformationCircleIcon,
   DocumentTextIcon,
   LinkIcon,
@@ -30,6 +29,13 @@ const getFullUrl = (path: string | null): string => {
 };
 
 // --- UI COMPONENTS ---
+
+// Simple Loader while data is being fetched
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-12 h-12 border-4 border-[#003459] border-t-[#ed1c24] rounded-full animate-spin"></div>
+  </div>
+);
 
 // Image Modal
 const ImageModal: React.FC<{
@@ -82,30 +88,6 @@ const ImageModal: React.FC<{
     </AnimatePresence>
   );
 };
-
-// Loader
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0, transition: { duration: 0.5 } }}
-  >
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-    >
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <motion.h2
-      className="text-2xl font-bold text-white mt-4"
-      initial={{ opacity: 0.5 }}
-      animate={{ opacity: [0.5, 1, 0.5] }}
-      transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-    >
-      Loading Sustainability...
-    </motion.h2>
-  </motion.div>
-);
 
 // FormattedDescription Helper
 const FormattedDescription: React.FC<{ text: string }> = ({ text }) => {
@@ -291,27 +273,9 @@ const SustainabilitySection: React.FC<{ setLoaded: (isLoaded: boolean) => void }
   );
 };
 
-// MAIN PAGE COMPONENT (no slideshow)
+// MAIN PAGE COMPONENT (with loader)
 const SustainabilityHomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
   const [sectionLoaded, setSectionLoaded] = useState(false);
-  const [minimumTimePassed, setMinimumTimePassed] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setMinimumTimePassed(true), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (sectionLoaded && minimumTimePassed) {
-      setIsLoading(false);
-    }
-  }, [sectionLoaded, minimumTimePassed]);
-
-  const contentVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.5, delay: 0.2 } },
-  };
 
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans flex flex-col">
@@ -325,18 +289,16 @@ const SustainabilityHomePage: React.FC = () => {
         pauseOnHover
         theme="colored"
       />
-      <AnimatePresence>{isLoading && <Loader />}</AnimatePresence>
-      <motion.div
-        className="flex-grow flex flex-col"
-        initial="hidden"
-        animate={isLoading ? "hidden" : "visible"}
-        variants={contentVariants}
-      >
+      <div className="flex-grow flex flex-col">
         <main className="flex-grow">
-          <SustainabilitySection setLoaded={setSectionLoaded} />
+          {!sectionLoaded ? (
+            <PageLoader />
+          ) : (
+            <SustainabilitySection setLoaded={setSectionLoaded} />
+          )}
         </main>
         <Footer />
-      </motion.div>
+      </div>
     </div>
   );
 };

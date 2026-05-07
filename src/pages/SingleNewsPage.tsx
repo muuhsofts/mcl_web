@@ -8,7 +8,6 @@ import {
   ChevronLeftIcon,
   CalendarDaysIcon,
   ShareIcon,
-  PlayCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate, useParams } from "react-router-dom";
 import axiosInstance from "../axios";
@@ -39,9 +38,11 @@ const formatDate = (dateString: string): string =>
     year: "numeric",
   });
 
-const getFullMediaUrl = (path: string | null | undefined): string | null => {
+// ✅ CORRECTED: Static assets (images, PDFs) are served from the BASE URL without "/api"
+const getStaticUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
-  const baseURL = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
+  // Remove trailing /api from baseURL if present (e.g., http://localhost:5000/api -> http://localhost:5000)
+  const baseURL = (axiosInstance.defaults.baseURL || "").replace(/\/api$/, "").replace(/\/$/, "");
   return `${baseURL}/${path.replace(/^\//, "")}`;
 };
 
@@ -73,7 +74,7 @@ const ShareButton: React.FC<{
   const handleShare = async () => {
     try {
       const shareText = `Article: ${title}\nURL: ${url}`;
-      
+
       let screenshotBlob: Blob | null = null;
       let screenshotDataUrl: string | null = null;
       if (categoryRef.current) {
@@ -83,9 +84,6 @@ const ShareButton: React.FC<{
           canvas.toBlob((blob) => resolve(blob), "image/png")
         );
       }
-
-      console.log("Share Text:", shareText);
-      console.log("Screenshot Data URL:", screenshotDataUrl ? screenshotDataUrl.substring(0, 50) + "..." : null);
 
       if (navigator.share) {
         const shareData: ShareData = {
@@ -103,7 +101,7 @@ const ShareButton: React.FC<{
           ? `${shareText}\n\nScreenshot (paste in browser to view):\n${screenshotDataUrl}`
           : shareText;
         await navigator.clipboard.writeText(clipboardContent);
-        
+
         if (screenshotDataUrl) {
           const link = document.createElement("a");
           link.href = screenshotDataUrl;
@@ -202,13 +200,12 @@ const SingleNewsPage: React.FC = () => {
     // Split text into words for counting, without removing punctuation
     const words = text.split(/\s+/).filter((word) => word.trim().length > 0);
 
-    // Break into paragraphs of approximately 90 words, keeping the last paragraph whole
-    const wordsPerParagraph =  88;
+    // Break into paragraphs of approximately 88 words, keeping the last paragraph whole
+    const wordsPerParagraph = 88;
     const paragraphs: string[] = [];
     let currentIndex = 0;
 
     for (let i = 0; i < words.length; i += wordsPerParagraph) {
-      // If this is the last chunk, take all remaining words as a single paragraph
       if (i + wordsPerParagraph >= words.length) {
         const lastParagraphWords = text.slice(currentIndex).trim();
         const sanitizedLastParagraph = DOMPurify.sanitize(lastParagraphWords, {
@@ -218,23 +215,17 @@ const SingleNewsPage: React.FC = () => {
         paragraphs.push(`<p class="mb-4">${sanitizedLastParagraph}</p>`);
         break;
       }
-      // Otherwise, calculate the substring for ~90 words, preserving punctuation
       let wordsInChunk = 0;
       let endIndex = currentIndex;
-
-      // Count words and find the end index for ~90 words
       while (endIndex < text.length && wordsInChunk < wordsPerParagraph) {
         const nextSpace = text.indexOf(" ", endIndex + 1);
-        if (nextSpace === -1) break; // No more spaces, take the rest
+        if (nextSpace === -1) break;
         endIndex = nextSpace;
         wordsInChunk++;
       }
-
-      // Adjust endIndex to include the full word
       if (endIndex < text.length && text[endIndex] === " ") {
         endIndex++;
       }
-
       const paragraphText = text.slice(currentIndex, endIndex).trim();
       const sanitizedParagraph = DOMPurify.sanitize(paragraphText, {
         ALLOWED_TAGS: ["strong", "em", "ul", "li", "a"],
@@ -252,36 +243,26 @@ const SingleNewsPage: React.FC = () => {
     };
   };
 
-  const renderMedia = (iframe: HTMLIFrameElement | null) => {
-    if (iframe && iframe.src) {
-      return (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="w-full aspect-video rounded-xl shadow-md overflow-hidden mb-8"
-        >
-          <iframe
-            src={iframe.src}
-            title={iframe.title || "News Video"}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-            className="w-full h-full"
-          />
-        </motion.div>
-      );
-    }
+  // Render video only if valid iframe exists; otherwise return null (hidden)
+  const renderVideo = (iframe: HTMLIFrameElement | null) => {
+    if (!iframe || !iframe.src) return null;
+
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.4 }}
-        className="w-full h-48 flex flex-col items-center justify-center aspect-video rounded-xl shadow-md bg-gray-100 mb-8"
+        className="w-full aspect-video rounded-xl shadow-md overflow-hidden mb-8"
       >
-        <PlayCircleIcon className="w-12 h-12 text-gray-400" />
-        <p className="text-sm text-gray-400 mt-1">No Video Available</p>
+        <iframe
+          src={iframe.src}
+          title={iframe.title || "News Video"}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+          className="w-full h-full"
+        />
       </motion.div>
     );
   };
@@ -307,8 +288,9 @@ const SingleNewsPage: React.FC = () => {
   }
 
   const { text, iframe } = parseDescription(news.description);
-  const imageUrl = getFullMediaUrl(news.news_img);
-  const pdfUrl = getFullMediaUrl(news.pdf_file);
+  // ✅ Use getStaticUrl for images and PDFs (no /api prefix)
+  const imageUrl = getStaticUrl(news.news_img);
+  const pdfUrl = getStaticUrl(news.pdf_file);
   const currentUrl = window.location.href;
 
   return (
@@ -319,7 +301,6 @@ const SingleNewsPage: React.FC = () => {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2">
-              {/* Back Button */}
               <motion.button
                 onClick={() => navigate("/company/news")}
                 className="mb-8 flex items-center text-[#003459] hover:text-[#0A51A1] font-semibold text-lg rounded-lg transition-all duration-300"
@@ -332,14 +313,12 @@ const SingleNewsPage: React.FC = () => {
                 Back to News
               </motion.button>
 
-              {/* Content Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 hover:shadow-xl transition-all duration-300"
               >
-                {/* Title with ref for screenshot */}
                 <motion.h1
                   ref={categoryRef}
                   initial={{ opacity: 0, y: 20 }}
@@ -350,7 +329,6 @@ const SingleNewsPage: React.FC = () => {
                   {news.category}
                 </motion.h1>
 
-                {/* Metadata */}
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-sm font-semibold text-[#0d7680] flex items-center">
                     <CalendarDaysIcon className="w-5 h-5 mr-2" />
@@ -376,7 +354,7 @@ const SingleNewsPage: React.FC = () => {
                   </motion.div>
                 )}
 
-                {/* News Content */}
+                {/* News Content (text only, iframe removed from here) */}
                 <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -385,25 +363,29 @@ const SingleNewsPage: React.FC = () => {
                     className="mb-4 text-lg text-gray-800"
                     dangerouslySetInnerHTML={{ __html: text }}
                   />
-                  {renderMedia(iframe)}
-                  {pdfUrl && (
-                    <div className="mt-8">
-                      <a
-                        href={pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-[#0A51A1] text-white font-semibold rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
-                        aria-label="View PDF document"
-                      >
-                        View PDF
-                      </a>
-                    </div>
-                  )}
                 </div>
+
+                {/* Video – only shown if iframe exists */}
+                {renderVideo(iframe)}
+
+                {/* PDF button – only shown if pdfUrl exists */}
+                {pdfUrl && (
+                  <div className="mt-8">
+                    <a
+                      href={pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-6 py-3 bg-[#0A51A1] text-white font-semibold rounded-lg shadow-md hover:bg-[#003459] transition-all duration-300 hover:shadow-lg"
+                      aria-label="View PDF document"
+                    >
+                      View PDF
+                    </a>
+                  </div>
+                )}
               </motion.div>
             </div>
 
-            {/* Sidebar */}
+            {/* Sidebar - hidden on mobile */}
             <aside className="lg:col-span-1 hidden lg:block sticky top-24 self-start">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -417,7 +399,6 @@ const SingleNewsPage: React.FC = () => {
                     <button
                       onClick={() => navigate("/company/news")}
                       className="text-[#0A51A1] hover:underline font-medium hover:text-[#003459] transition-colors duration-200"
-                      aria-label="View all news"
                     >
                       All News
                     </button>
@@ -426,7 +407,6 @@ const SingleNewsPage: React.FC = () => {
                     <a
                       href="#top"
                       className="text-[#0A51A1] hover:underline font-medium hover:text-[#003459] transition-colors duration-200"
-                      aria-label="Back to top"
                     >
                       Back to Top
                     </a>

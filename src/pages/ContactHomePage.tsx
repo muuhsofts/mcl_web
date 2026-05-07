@@ -1,11 +1,10 @@
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import axiosInstance from "../axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Footer from "../components/Footer";
 import {
-  ArrowPathIcon,
   InformationCircleIcon,
   ChatBubbleLeftRightIcon,
   PhoneIcon,
@@ -36,28 +35,7 @@ interface ContactInfo {
   contact_us: ContactCategory;
 }
 
-// --- LOADER (unchanged) ---
-const LandingLoader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0, transition: { duration: 0.5 } }}
-  >
-    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <motion.h2
-      className="text-2xl font-bold text-white mt-4"
-      initial={{ opacity: 0.5 }}
-      animate={{ opacity: [0.5, 1, 0.5] }}
-      transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-    >
-      Loading Contact Page...
-    </motion.h2>
-  </motion.div>
-);
-
-// --- MODERN HERO SECTION (replaces slideshow) ---
+// --- MODERN HERO SECTION ---
 const ModernHero: React.FC = () => (
   <section className="relative bg-gradient-to-br from-[#0A51A1] to-[#003459] text-white py-24 md:py-32 overflow-hidden">
     <div className="absolute inset-0 opacity-10">
@@ -80,7 +58,7 @@ const ModernHero: React.FC = () => (
   </section>
 );
 
-// --- ENHANCED CONTACT CARD (new design) ---
+// --- ENHANCED CONTACT CARD ---
 const ContactCard: React.FC<{ category: ContactCategory; contactInfos: ContactInfo[] }> = ({ category, contactInfos }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const maxLength = 120;
@@ -168,7 +146,7 @@ const ContactCard: React.FC<{ category: ContactCategory; contactInfos: ContactIn
   );
 };
 
-// --- CONTACT SECTION (redesigned grid) ---
+// --- CONTACT SECTION ---
 const ContactSection: React.FC<{ categories: ContactCategory[]; allContactInfos: ContactInfo[] }> = ({
   categories,
   allContactInfos,
@@ -227,9 +205,8 @@ const ContactSection: React.FC<{ categories: ContactCategory[]; allContactInfos:
   );
 };
 
-// --- MAIN PAGE (no slideshow) ---
+// --- MAIN PAGE (no loader) ---
 const ContactHomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<ContactCategory[]>([]);
   const [contactInfos, setContactInfos] = useState<ContactInfo[]>([]);
 
@@ -246,35 +223,20 @@ const ContactHomePage: React.FC = () => {
       } catch (error: any) {
         console.error("API Fetch Error:", error);
         toast.error(`Failed to load contact data: ${error.message || "Unknown error"}`);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadPageData();
   }, []);
 
-  const contentVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.5, delay: 0.2 } },
-  };
-
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans flex flex-col">
       <ToastContainer position="top-right" autoClose={3000} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover theme="colored" />
-      <AnimatePresence>{isLoading && <LandingLoader />}</AnimatePresence>
-      <motion.div
-        className="flex-grow flex flex-col"
-        initial="hidden"
-        animate={isLoading ? "hidden" : "visible"}
-        variants={contentVariants}
-      >
-        <ModernHero />
-        <main className="flex-grow">
-          <ContactSection categories={categories} allContactInfos={contactInfos} />
-        </main>
-        <Footer />
-      </motion.div>
+      <ModernHero />
+      <main className="flex-grow">
+        <ContactSection categories={categories} allContactInfos={contactInfos} />
+      </main>
+      <Footer />
     </div>
   );
 };

@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  ArrowPathIcon,
   InformationCircleIcon,
   CalendarDaysIcon,
   PhotoIcon,
-  PlayCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate, useParams } from "react-router-dom";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
 import DOMPurify from "dompurify";
 
-
+// ------------------------------
+// Types
+// ------------------------------
 interface NewsData {
   news_id: number;
   category: string;
@@ -22,9 +22,12 @@ interface NewsData {
   news_img: string | null;
   pdf_file: string | null;
   created_at: string;
+  read_more_url_lnk?: string | null;
 }
 
-// --- UTILITY FUNCTIONS ---
+// ------------------------------
+// Utilities
+// ------------------------------
 const formatDate = (dateString: string): string =>
   new Date(dateString).toLocaleDateString("en-US", {
     month: "long",
@@ -38,135 +41,103 @@ const getFullMediaUrl = (path: string | null | undefined): string | null => {
   return `${baseURL}/${path.replace(/^\//, "")}`;
 };
 
-// --- LOADER COMPONENT ---
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-      className="mb-4"
-    >
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <h2 className="text-2xl font-bold text-white tracking-wider">Loading News...</h2>
-  </motion.div>
-);
+const stripHtml = (html: string): string => {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
 
-// --- NewsCard COMPONENT (unchanged but adjusted for horizontal layout) ---
+const parseDescription = (description: string | null) => {
+  if (!description) return { text: "", iframe: null };
+
+  const sanitized = DOMPurify.sanitize(description, {
+    ALLOWED_TAGS: ["iframe"],
+    ALLOWED_ATTR: ["src", "width", "height", "frameborder", "allow", "allowfullscreen", "title", "referrerpolicy"],
+  });
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(sanitized, "text/html");
+  const iframe = doc.querySelector("iframe");
+
+  let text = description;
+  if (iframe) {
+    const iframeString = iframe.outerHTML;
+    text = description.replace(iframeString, "").trim();
+  }
+
+  return { text: stripHtml(text), iframe };
+};
+
+// ------------------------------
+// News Card Component – with full, uncropped image
+// ------------------------------
 const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
   const imageUrl = getFullMediaUrl(news.news_img);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { text, iframe } = parseDescription(news.description);
+  const shortPreview = text.length > 120 ? text.substring(0, 120) + "..." : text;
   const navigate = useNavigate();
 
-  const parseDescription = (description: string | null) => {
-    if (!description) return { text: "Click to read more details.", iframe: null };
-
-    const sanitizedDescription = DOMPurify.sanitize(description, {
-      ALLOWED_TAGS: ["iframe"],
-      ALLOWED_ATTR: ["src", "width", "height", "frameborder", "allow", "allowfullscreen", "title", "referrerpolicy"],
-    });
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(sanitizedDescription, "text/html");
-    const iframe = doc.querySelector("iframe");
-
-    let text = description;
-    if (iframe) {
-      const iframeString = iframe.outerHTML;
-      text = description.replace(iframeString, "").trim() || "Click to read more details.";
-    }
-
-    return { text: DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }), iframe };
-  };
-
-  const { text, iframe } = parseDescription(news.description);
-  const isTextLong = text.length > 200;
-
-  const renderMedia = () => {
-    if (iframe && iframe.src) {
-      return (
-        <div className="w-full h-32 flex items-center justify-center aspect-video rounded-lg shadow-md overflow-hidden bg-gray-100">
-          <iframe
-            src={iframe.src}
-            title={iframe.title || "News Video"}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-            className="w-full h-full object-cover"
-          />
-        </div>
-      );
-    }
-    return (
-      <div className="w-full h-32 flex flex-col items-center justify-center aspect-video rounded-lg shadow-md bg-gray-100">
-        <PlayCircleIcon className="w-12 h-12 text-gray-400" />
-        <p className="text-sm text-gray-400 mt-1">No Video Available</p>
-      </div>
-    );
+  const handleReadMore = () => {
+    navigate(`/readmore-news/${news.news_id}`);
   };
 
   return (
     <motion.div
-      layoutId={`news-card-${news.news_id}`}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest(".read-more-less")) return;
-        navigate(`/readmore-news/${news.news_id}`);
-      }}
-      className="relative group flex flex-col cursor-pointer bg-white rounded-xl shadow-lg transition-all duration-300 border border-transparent hover:border-[#0072bc] hover:shadow-xl w-80 flex-shrink-0"
+      className="relative group flex flex-col bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl w-80 flex-shrink-0 overflow-hidden h-full"
+      whileHover={{ y: -5 }}
     >
-      <div className="relative z-10 mx-auto w-full max-w-[90%] h-48 flex items-center justify-center bg-gray-50 rounded-lg shadow-md transition-transform duration-300 ease-in-out group-hover:transform group-hover:-translate-y-8 group-hover:shadow-xl">
+      {/* Image container – increased height + object-contain ensures full image visible */}
+      <div className="relative h-56 bg-gray-100 flex items-center justify-center">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={news.category}
-            className="w-full h-full object-contain rounded-lg"
+            className="w-full h-full object-contain"
             loading="lazy"
-            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x192?text=Image+Error")}
+            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x224?text=Image+Error")}
           />
         ) : (
           <PhotoIcon className="w-16 h-16 text-gray-300" />
         )}
       </div>
-      <div className="p-6 pt-20 flex flex-col flex-grow bg-gray-50 rounded-b-xl">
-        <p className="text-sm font-semibold text-[#0d7680] mb-3">
-          <CalendarDaysIcon className="w-4 h-4 inline-block mr-1.5 align-text-bottom" />
+
+      {/* Content area */}
+      <div className="p-5 flex flex-col flex-grow">
+        <p className="text-sm font-semibold text-[#0d7680] mb-2 flex items-center">
+          <CalendarDaysIcon className="w-4 h-4 mr-1.5" />
           {formatDate(news.created_at)}
         </p>
-        <h3 className="text-xl font-bold text-[#003459] mb-3 line-clamp-2 flex-shrink-0">{news.category}</h3>
-        <div className="flex flex-col flex-grow gap-4">
-          <motion.div
-            animate={{ height: "auto" }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="flex flex-col flex-grow text-left"
-          >
-            <p className={`text-gray-600 text-base ${isExpanded || !isTextLong ? "" : "line-clamp-4"}`}>{text}</p>
-            {isTextLong && (
-              <button
-                className="read-more-less text-blue-600 hover:underline font-semibold mt-2 text-sm self-start"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                aria-expanded={isExpanded}
-              >
-                {isExpanded ? "Read Less" : "Read More"}
-              </button>
-            )}
-          </motion.div>
-          {renderMedia()}
-        </div>
+        <h3 className="text-xl font-bold text-[#003459] mb-2 line-clamp-2">{news.category}</h3>
+        <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-4">{shortPreview}</p>
+
+        <button
+          onClick={handleReadMore}
+          className="self-start bg-[#0A51A1] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#003459] transition mb-4"
+        >
+          Read More →
+        </button>
+
+        {iframe && iframe.src && (
+          <div className="w-full rounded-lg overflow-hidden aspect-video bg-gray-100">
+            <iframe
+              src={iframe.src}
+              title={iframe.title || "News Video"}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        )}
       </div>
     </motion.div>
   );
 };
 
-// --- NEWS SECTION – HORIZONTAL SCROLLING VERSION ---
+// ------------------------------
+// Horizontal scrolling news section (loader removed)
+// ------------------------------
 const NewsSection: React.FC<{
   news: NewsData[];
   filters: { month: string; setMonth: (m: string) => void; year: string; setYear: (y: string) => void };
@@ -198,9 +169,9 @@ const NewsSection: React.FC<{
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003459]">Our News and Updates</h2>
+          <div className="w-20 h-1 bg-red-500 mx-auto mt-3 rounded-full" />
         </div>
 
-        {/* Filters row */}
         <div className="bg-white p-4 rounded-xl shadow-md mb-12 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
           <select
             value={filters.year}
@@ -254,7 +225,6 @@ const NewsSection: React.FC<{
 
         {paginatedNews.length > 0 ? (
           <>
-            {/* Horizontal scrollable container */}
             <div className="overflow-x-auto pb-6">
               <div className="flex gap-6 w-max">
                 {paginatedNews.map((item) => (
@@ -263,7 +233,6 @@ const NewsSection: React.FC<{
               </div>
             </div>
 
-            {/* Pagination controls (same as before) */}
             {totalPages > 1 && (
               <div className="mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-gray-600">
@@ -293,8 +262,8 @@ const NewsSection: React.FC<{
             )}
           </>
         ) : (
-          <div className="text-center py-16">
-            <CalendarDaysIcon className="w-16 h-16 mx-auto text-gray-600" />
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+            <CalendarDaysIcon className="w-16 h-16 mx-auto text-gray-400" />
             <h3 className="mt-4 text-xl font-bold text-[#003459]">No News Found</h3>
             <p className="text-gray-500 mt-2">No articles match your current filters. Try clearing them.</p>
           </div>
@@ -304,22 +273,89 @@ const NewsSection: React.FC<{
   );
 };
 
-// --- SINGLE NEWS PAGE (unchanged) ---
+// ------------------------------
+// Main News Home Page (loader removed)
+// ------------------------------
+const NewsHomePage: React.FC = () => {
+  const [allNews, setAllNews] = useState<NewsData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [month, setMonth] = useState<string>("");
+  const [year, setYear] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+
+  const fetchNews = useCallback(async () => {
+    setError(null);
+    try {
+      const response = await axiosInstance.get<{ news: NewsData[] }>("/api/allNews");
+      const sortedNews = (response.data.news || []).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setAllNews(sortedNews);
+    } catch (err) {
+      setError("Failed to fetch news data.");
+      toast.error("Error fetching news data.");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
+
+  const filteredNews = allNews.filter((item) => {
+    if (year && new Date(item.created_at).getFullYear().toString() !== year) return false;
+    if (month && (new Date(item.created_at).getMonth() + 1).toString() !== month) return false;
+    return true;
+  });
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
+        <InformationCircleIcon className="w-16 h-16 text-red-500" />
+        <h2 className="mt-4 text-2xl font-bold">An Error Occurred</h2>
+        <p className="mt-2 text-gray-600">{error}</p>
+        <button
+          onClick={fetchNews}
+          className="mt-6 px-6 py-2 bg-[#0A51A1] text-white font-semibold rounded-md"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
+      <main className="flex-grow">
+        <NewsSection
+          news={filteredNews}
+          filters={{ month, setMonth, year, setYear }}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+        />
+      </main>
+      <footer><Footer /></footer>
+    </div>
+  );
+};
+
+// ------------------------------
+// Single News Page (loader removed)
+// ------------------------------
 const SingleNewsPage: React.FC = () => {
   const { news_id } = useParams<{ news_id: string }>();
   const [news, setNews] = useState<NewsData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchSingleNews = useCallback(async () => {
     if (!news_id) {
       setError("Invalid news ID.");
-      setIsLoading(false);
       return;
     }
-
-    setIsLoading(true);
     setError(null);
     try {
       const response = await axiosInstance.get<NewsData>(`/readmore-news/${news_id}`);
@@ -327,8 +363,6 @@ const SingleNewsPage: React.FC = () => {
     } catch (err) {
       setError("Failed to fetch news article.");
       toast.error("Error fetching news article.");
-    } finally {
-      setIsLoading(false);
     }
   }, [news_id]);
 
@@ -336,32 +370,9 @@ const SingleNewsPage: React.FC = () => {
     fetchSingleNews();
   }, [fetchSingleNews]);
 
-  const parseDescription = (description: string | null) => {
-    if (!description) return { text: "No details available.", iframe: null };
-
-    const sanitizedDescription = DOMPurify.sanitize(description, {
-      ALLOWED_TAGS: ["iframe"],
-      ALLOWED_ATTR: ["src", "width", "height", "frameborder", "allow", "allowfullscreen", "title", "referrerpolicy"],
-    });
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(sanitizedDescription, "text/html");
-    const iframe = doc.querySelector("iframe");
-
-    let text = description;
-    if (iframe) {
-      const iframeString = iframe.outerHTML;
-      text = description.replace(iframeString, "").trim() || "No additional details.";
-    }
-
-    return { text: DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }), iframe };
-  };
-
-  if (isLoading) return <Loader />;
-
   if (error || !news) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center text-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
         <InformationCircleIcon className="w-16 h-16 text-red-500" />
         <h2 className="mt-4 text-2xl font-bold">An Error Occurred</h2>
         <p className="mt-2 text-gray-600">{error || "News article not found."}</p>
@@ -375,9 +386,9 @@ const SingleNewsPage: React.FC = () => {
     );
   }
 
-  const { text, iframe } = parseDescription(news.description);
   const imageUrl = getFullMediaUrl(news.news_img);
   const pdfUrl = getFullMediaUrl(news.pdf_file);
+  const { text, iframe } = parseDescription(news.description);
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
@@ -389,8 +400,7 @@ const SingleNewsPage: React.FC = () => {
               onClick={() => navigate("/news")}
               className="mb-6 flex items-center text-[#003459] hover:text-[#0A51A1] font-semibold"
             >
-              <ArrowPathIcon className="w-5 h-5 mr-2 rotate-180" />
-              Back to News
+              ← Back to News
             </button>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -406,16 +416,17 @@ const SingleNewsPage: React.FC = () => {
                 <img
                   src={imageUrl}
                   alt={news.category}
-                  className="w-full h-auto max-h-[500px] object-cover rounded-lg shadow-lg"
+                  className="w-full h-auto max-h-[500px] object-contain rounded-lg shadow-lg"
                   onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400?text=Image+Error")}
                 />
               </motion.div>
             )}
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="prose prose-lg max-w-none text-gray-700">
-              <div className="leading-relaxed">{text}</div>
+              <div className="leading-relaxed whitespace-pre-line">{text}</div>
+
               {iframe && iframe.src && (
-                <div className="mb-8 w-full aspect-video rounded-lg shadow-md overflow-hidden">
+                <div className="my-8 w-full aspect-video rounded-lg shadow-md overflow-hidden">
                   <iframe
                     src={iframe.src}
                     title={iframe.title || "News Video"}
@@ -427,6 +438,7 @@ const SingleNewsPage: React.FC = () => {
                   />
                 </div>
               )}
+
               {pdfUrl && (
                 <div className="mt-8">
                   <a
@@ -448,79 +460,8 @@ const SingleNewsPage: React.FC = () => {
   );
 };
 
-// --- MAIN NEWS PAGE (NO SLIDESHOW, HORIZONTAL CARDS) ---
-const NewsHomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [allNews, setAllNews] = useState<NewsData[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [month, setMonth] = useState<string>("");
-  const [year, setYear] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
-
-  const fetchNews = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await axiosInstance.get<{ news: NewsData[] }>("/api/allNews");
-      const sortedNews = (response.data.news || []).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      setAllNews(sortedNews);
-    } catch (err) {
-      setError("Failed to fetch news data.");
-      toast.error("Error fetching news data.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
-
-  const filteredNews = allNews.filter((item) => {
-    if (year && new Date(item.created_at).getFullYear().toString() !== year) return false;
-    if (month && (new Date(item.created_at).getMonth() + 1).toString() !== month) return false;
-    return true;
-  });
-
-  if (error && !isLoading) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center text-center p-4">
-        <InformationCircleIcon className="w-16 h-16 text-red-500" />
-        <h2 className="mt-4 text-2xl font-bold">An Error Occurred</h2>
-        <p className="mt-2 text-gray-600">{error}</p>
-        <button onClick={fetchNews} className="mt-6 px-6 py-2 bg-[#0A51A1] text-white font-semibold rounded-md">
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
-      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
-      <AnimatePresence>{isLoading && <Loader />}</AnimatePresence>
-      {!isLoading && (
-        <>
-          <main className="flex-grow">
-            <NewsSection
-              news={filteredNews}
-              filters={{ month, setMonth, year, setYear }}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-              itemsPerPage={itemsPerPage}
-              setItemsPerPage={setItemsPerPage}
-            />
-          </main>
-          <footer><Footer /></footer>
-        </>
-      )}
-    </div>
-  );
-};
-
-// Export both components
+// ------------------------------
+// Exports
+// ------------------------------
 export { NewsHomePage, SingleNewsPage };
 export default NewsHomePage;

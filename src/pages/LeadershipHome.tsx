@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, Transition, Variants } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { ArrowPathIcon, InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../axios";
 import Footer from "../components/Footer";
 
@@ -22,14 +22,6 @@ interface LeadershipResponse {
 }
 
 // CONSTANTS
-const LOADER_ICON_ANIMATION = {
-  animate: { opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] },
-  transition: { repeat: Infinity, duration: 1.5, ease: "easeInOut" as const },
-};
-const LOADER_TEXT_ANIMATION = {
-  animate: { opacity: [0.5, 1, 0.5] },
-  transition: { repeat: Infinity, duration: 1.5, ease: "easeInOut" as const },
-};
 const MODAL_TRANSITION: Transition = { duration: 0.3, ease: "easeOut" };
 const TEXT_FADE_IN_TRANSITION: Transition = { duration: 0.6, ease: "easeOut" };
 const FILTER_SECTION_TRANSITION: Transition = { duration: 0.5 };
@@ -42,23 +34,7 @@ const getImageUrl = (path: string | null, placeholder: string): string => {
   return `${baseUrl}/${imagePath}`;
 };
 
-// LOADER COMPONENT (unchanged)
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0, transition: { duration: 0.5 } }}
-  >
-    <motion.div {...LOADER_ICON_ANIMATION} className="mb-4">
-      <ArrowPathIcon className="w-16 h-16 text-white animate-spin" />
-    </motion.div>
-    <motion.h2 {...LOADER_TEXT_ANIMATION} className="text-2xl font-bold text-white">
-      Loading Leadership...
-    </motion.h2>
-  </motion.div>
-);
-
-// MODAL COMPONENT (unchanged)
+// MODAL COMPONENT
 const LeaderImageModal: React.FC<{ imageUrl: string; altText: string; onClose: () => void }> = ({ imageUrl, altText, onClose }) => (
   <motion.div
     className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
@@ -80,7 +56,7 @@ const LeaderImageModal: React.FC<{ imageUrl: string; altText: string; onClose: (
   </motion.div>
 );
 
-// TOP LEADER CARD COMPONENT (unchanged)
+// TOP LEADER CARD COMPONENT
 const TopLeaderCard: React.FC<{ leader: LeadershipData }> = ({ leader }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const imageUrl = getImageUrl(leader.leader_image, "https://via.placeholder.com/400x400?text=Leader+Image");
@@ -129,7 +105,7 @@ const TopLeaderCard: React.FC<{ leader: LeadershipData }> = ({ leader }) => {
   );
 };
 
-// LEADERSHIP CARD COMPONENT (unchanged)
+// LEADERSHIP CARD COMPONENT
 const LeadershipCard: React.FC<{ leader: LeadershipData; index: number }> = ({ leader, index }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const imageUrl = getImageUrl(leader.leader_image, "https://via.placeholder.com/400x300?text=Leader+Image");
@@ -170,7 +146,7 @@ const LeadershipCard: React.FC<{ leader: LeadershipData; index: number }> = ({ l
   );
 };
 
-// FILTER BUTTON COMPONENT (unchanged)
+// FILTER BUTTON COMPONENT
 type FilterType = "Board of Directors" | "Management" | "All";
 const FilterButton: React.FC<{ label: FilterType; activeFilter: FilterType; setFilter: (filter: FilterType) => void }> = ({
   label,
@@ -190,7 +166,7 @@ const FilterButton: React.FC<{ label: FilterType; activeFilter: FilterType; setF
   );
 };
 
-// TEAM HIERARCHY COMPONENT (unchanged)
+// TEAM HIERARCHY COMPONENT
 interface TeamHierarchyProps {
   title: string;
   topLeader: LeadershipData | undefined;
@@ -227,8 +203,8 @@ const TeamHierarchy: React.FC<TeamHierarchyProps> = ({ title, topLeader, otherMe
   );
 };
 
-// LEADERSHIP SECTION (unchanged, but now it's the only content)
-const LeadershipSection: React.FC<{ setLoading: (isLoaded: boolean) => void }> = ({ setLoading }) => {
+// LEADERSHIP SECTION (no loader-related props needed)
+const LeadershipSection: React.FC = () => {
   const [leaders, setLeaders] = useState<LeadershipData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("All");
@@ -246,10 +222,8 @@ const LeadershipSection: React.FC<{ setLoading: (isLoaded: boolean) => void }> =
     } catch (err) {
       setError("Could not fetch leadership team.");
       toast.error("Could not fetch leadership team.");
-    } finally {
-      setLoading(true);
     }
-  }, [setLoading]);
+  }, []);
 
   useEffect(() => {
     fetchLeaders();
@@ -341,40 +315,15 @@ const LeadershipSection: React.FC<{ setLoading: (isLoaded: boolean) => void }> =
   );
 };
 
-// MAIN PAGE COMPONENT (no slideshow, only leadership section)
+// MAIN PAGE COMPONENT (no loader)
 const LeadershipHomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [sectionLoaded, setSectionLoaded] = useState(false);
-  const [minimumTimePassed, setMinimumTimePassed] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinimumTimePassed(true);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (sectionLoaded && minimumTimePassed) {
-      setIsLoading(false);
-    }
-  }, [sectionLoaded, minimumTimePassed]);
-
-  const contentVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.5, delay: 0.2 } },
-  };
-
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans flex flex-col">
       <ToastContainer position="top-right" autoClose={4000} newestOnTop closeOnClick draggable pauseOnHover theme="colored" />
-      <AnimatePresence>{isLoading && <Loader />}</AnimatePresence>
-      <motion.div className="flex-grow flex flex-col" initial="hidden" animate={isLoading ? "hidden" : "visible"} variants={contentVariants}>
-        <main className="flex-grow">
-          <LeadershipSection setLoading={setSectionLoaded} />
-        </main>
-        <Footer />
-      </motion.div>
+      <main className="flex-grow">
+        <LeadershipSection />
+      </main>
+      <Footer />
     </div>
   );
 };

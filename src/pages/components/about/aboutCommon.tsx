@@ -1,7 +1,6 @@
-// components/about/aboutCommon.tsx
-import React from "react";
+// src/pages/components/about/aboutCommon.tsx
+import React, { useEffect, useState } from "react";
 import { motion, Variants } from "framer-motion";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../../../axios";
 
 // ---------- Types ----------
@@ -33,7 +32,7 @@ export interface AboutCardData {
 export interface SubscriptionData {
   subscription_id: number;
   category: string;
-  total_viewers: string;   // ✅ changed from number to string
+  total_viewers: string;
   logo_img_file: string;
   created_at: string;
   updated_at: string;
@@ -171,21 +170,93 @@ export const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ childre
   </motion.div>
 );
 
-export const LandingLoader: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
-    className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 to-blue-600 z-50"
-  >
+// ---------- Improved LandingLoader (TypeScript-safe, no conditional spread) ----------
+export const LandingLoader: React.FC = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  // Define transitions without conditional spread
+  const spinnerTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { repeat: Infinity, duration: 1, ease: "linear" as const };
+
+  const shineAnimation = prefersReducedMotion
+    ? {}
+    : {
+        animate: { x: ["-100%", "100%"] },
+        transition: { repeat: Infinity, duration: 3, ease: "linear" as const },
+      };
+
+  return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0, transition: { delay: 0.2 } }}
+      initial={{ opacity: 1 }}
+      exit={{
+        opacity: 0,
+        scale: 0.95,
+        filter: "blur(4px)",
+        transition: { duration: 0.6, ease: "easeInOut" },
+      }}
+      className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 z-50"
+      aria-label="Loading, please wait"
+      role="status"
     >
-      <ArrowPathIcon className="w-16 h-16 text-white animate-spin" />
+      {/* Animated shine overlay */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"
+        {...shineAnimation}
+      />
+
+      {/* Spinner - uses the previously unused spinnerTransition */}
+      <motion.div
+        className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full mb-6"
+        animate={{ rotate: 360 }}
+        transition={spinnerTransition}
+      />
+
+      {/* Logo container – replace with your actual logo */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="mb-6"
+      >
+        <img
+          src="/logo-white.svg" // 👈 Replace with your actual logo path
+          alt="Company Logo"
+          className="w-16 h-16 md:w-20 md:h-20 object-contain"
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
+      </motion.div>
+
+      {/* Animated gradient text – conditional animation without spread */}
+      <motion.h1
+        className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-white via-yellow-300 to-white bg-clip-text text-transparent bg-[length:200%_auto] text-center px-4 font-inter"
+        {...(prefersReducedMotion
+          ? {}
+          : {
+              animate: { backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] },
+              transition: { repeat: Infinity, duration: 4, ease: "linear" as const },
+            })}
+      >
+        Empowering The Nation
+      </motion.h1>
+
+      {/* Optional loading tip */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.6 }}
+        transition={{ delay: 0.8, duration: 0.5 }}
+        className="mt-6 text-white/60 text-sm font-medium tracking-wide"
+      >
+        Loading...
+      </motion.p>
     </motion.div>
-    <AnimatedText
-      text="Empowering The Nation"
-      className="text-2xl font-bold text-white tracking-wide font-inter"
-    />
-  </motion.div>
-);
+  );
+};

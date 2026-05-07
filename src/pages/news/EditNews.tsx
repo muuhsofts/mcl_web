@@ -21,9 +21,22 @@ interface FormErrors {
 }
 
 /**
+ * Helper: Remove all HTML tags from a string.
+ * Converts HTML content into plain text suitable for editing.
+ */
+const stripHtmlTags = (html: string | null | undefined): string => {
+  if (!html) return '';
+  // Quick regex to remove all opening/closing tags. 
+  // For a more robust approach (avoiding edge cases), a DOM parser could be used,
+  // but regex is sufficient for stripping tags from typical rich text.
+  return html.replace(/<[^>]*>/g, '');
+};
+
+/**
  * A form component for editing an existing "news" item.
  * It fetches the existing news data and allows updating the category,
- * description, and replacing the associated image and PDF files.
+ * description (unlimited length, HTML-stripped), and optionally replacing
+ * the associated image and PDF files.
  */
 const EditNews: React.FC = () => {
   const navigate = useNavigate();
@@ -37,7 +50,6 @@ const EditNews: React.FC = () => {
   });
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [currentPdf, setCurrentPdf] = useState<string | null>(null);
-  // Use the dedicated FormErrors interface for the errors state
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -51,10 +63,14 @@ const EditNews: React.FC = () => {
       try {
         const response = await axiosInstance.get(`/api/news/${news_id}`);
         const newsData = response.data.news;
+        // ✅ Strip HTML tags from the fetched description before displaying in textarea
+        const rawDescription = newsData?.description || '';
+        const plainDescription = stripHtmlTags(rawDescription);
+
         setFormData({
           category: newsData?.category || '',
-          description: newsData?.description || '',
-          news_img: null, // Reset file inputs
+          description: plainDescription,
+          news_img: null,
           pdf_file: null,
         });
         setCurrentImage(newsData?.news_img || null);
@@ -94,14 +110,13 @@ const EditNews: React.FC = () => {
       newErrors.category = 'Category must not exceed 255 characters';
     }
 
-    if (formData.description && formData.description.length > 1000) {
-      newErrors.description = 'Description must not exceed 1000 characters';
-    }
+    // Description has no length validation – it can be any length.
+    // (Only HTML tags have been stripped; plain text remains fully editable.)
 
     if (formData.news_img) {
       if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(formData.news_img.type)) {
         newErrors.news_img = 'Only JPEG, PNG, JPG, or GIF files are allowed';
-      } else if (formData.news_img.size > 2 * 1024 * 1024) { // 2MB
+      } else if (formData.news_img.size > 2 * 1024 * 1024) {
         newErrors.news_img = 'Image size must not exceed 2MB';
       }
     }
@@ -109,7 +124,7 @@ const EditNews: React.FC = () => {
     if (formData.pdf_file) {
       if (formData.pdf_file.type !== 'application/pdf') {
         newErrors.pdf_file = 'Only PDF files are allowed';
-      } else if (formData.pdf_file.size > 2 * 1024 * 1024) { // 2MB
+      } else if (formData.pdf_file.size > 2 * 1024 * 1024) {
         newErrors.pdf_file = 'PDF size must not exceed 2MB';
       }
     }
@@ -128,6 +143,7 @@ const EditNews: React.FC = () => {
     setLoading(true);
     const payload = new FormData();
     payload.append('category', formData.category);
+    // Description is already plain text (no HTML tags)
     payload.append('description', formData.description || '');
     if (formData.news_img) {
       payload.append('news_img', formData.news_img);
@@ -179,15 +195,33 @@ const EditNews: React.FC = () => {
           {/* Category */}
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
-            <input type="text" id="category" name="category" value={formData.category} onChange={handleChange} className={`${inputBaseClasses} ${errors.category ? inputErrorClasses : inputBorderClasses}`} placeholder="Enter category" maxLength={255} />
+            <input
+              type="text"
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className={`${inputBaseClasses} ${errors.category ? inputErrorClasses : inputBorderClasses}`}
+              placeholder="Enter category"
+              maxLength={255}
+            />
             {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
           </div>
 
-          {/* Description */}
+          {/* Description – HTML‑stripped, no character limit */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description <span className="text-gray-500">(optional)</span></label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={4} className={`${inputBaseClasses} ${errors.description ? inputErrorClasses : inputBorderClasses}`} placeholder="Enter description" maxLength={1000} />
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description <span className="text-gray-500">(optional, plain text only)</span></label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={8}
+              className={`${inputBaseClasses} ${errors.description ? inputErrorClasses : inputBorderClasses}`}
+              placeholder="Enter description (HTML tags are automatically removed when loading; no character limit)"
+            />
             {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
+            <p className="mt-1 text-xs text-gray-500">No character limit – you can write as much as needed. All HTML formatting (e.g. &lt;strong&gt;, &lt;p&gt;, &lt;iframe&gt;) is stripped before editing.</p>
           </div>
 
           {/* News Image */}
@@ -196,10 +230,22 @@ const EditNews: React.FC = () => {
             {displayImageUrl && (
               <div className="my-2">
                 <p className="text-sm text-gray-600 mb-1">Current Image:</p>
-                <img src={displayImageUrl} alt="Current News" className="h-32 w-auto max-w-xs object-contain rounded border border-gray-200" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <img
+                  src={displayImageUrl}
+                  alt="Current News"
+                  className="h-32 w-auto max-w-xs object-contain rounded border border-gray-200"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
               </div>
             )}
-            <input type="file" id="news_img" name="news_img" accept="image/jpeg,image/png,image/jpg,image/gif" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            <input
+              type="file"
+              id="news_img"
+              name="news_img"
+              accept="image/jpeg,image/png,image/jpg,image/gif"
+              onChange={handleFileChange}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
             {errors.news_img && <p className="mt-1 text-sm text-red-500">{errors.news_img}</p>}
             <p className="mt-1 text-xs text-gray-500">Max file size: 2MB. Allowed types: JPG, PNG, GIF.</p>
           </div>
@@ -210,20 +256,37 @@ const EditNews: React.FC = () => {
             {displayPdfUrl && (
               <div className="my-2">
                 <p className="text-sm text-gray-600 mb-1">Current PDF:</p>
-                <a href={displayPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 hover:underline text-sm font-medium">View Current PDF</a>
+                <a href={displayPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 hover:underline text-sm font-medium">
+                  View Current PDF
+                </a>
               </div>
             )}
-            <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            <input
+              type="file"
+              id="pdf_file"
+              name="pdf_file"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
             {errors.pdf_file && <p className="mt-1 text-sm text-red-500">{errors.pdf_file}</p>}
             <p className="mt-1 text-xs text-gray-500">Max file size: 2MB. Allowed type: PDF.</p>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
-            <button type="button" onClick={() => navigate('/news')} className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition shadow-sm font-semibold">
+            <button
+              type="button"
+              onClick={() => navigate('/news')}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition shadow-sm font-semibold"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={loading} className={`w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-semibold flex items-center justify-center ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm font-semibold flex items-center justify-center ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               {loading ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

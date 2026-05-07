@@ -51,26 +51,18 @@ const getYouTubeEmbedUrl = (url: string | null): string | null => {
     const urlObj = new URL(url);
     if (urlObj.hostname === "youtu.be") videoId = urlObj.pathname.slice(1);
     else if (urlObj.hostname.includes("youtube.com")) videoId = urlObj.searchParams.get("v");
-  } catch (error) { return null; }
+  } catch (error) {
+    return null;
+  }
   return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
 };
 
 // --- UI COMPONENTS ---
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#003459] to-[#0072bc] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="mb-4">
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <h2 className="text-2xl font-bold text-white tracking-wider">Loading Events...</h2>
-  </motion.div>
-);
-
-const ImageModal: React.FC<{ imageUrl: string; altText: string; onClose: () => void; }> = ({ imageUrl, altText, onClose }) => (
+const ImageModal: React.FC<{
+  imageUrl: string;
+  altText: string;
+  onClose: () => void;
+}> = ({ imageUrl, altText, onClose }) => (
   <motion.div
     className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
     initial={{ opacity: 0 }}
@@ -93,13 +85,20 @@ const ImageModal: React.FC<{ imageUrl: string; altText: string; onClose: () => v
       >
         <XMarkIcon className="w-6 h-6" />
       </button>
-      <img src={imageUrl} alt={altText} className="w-full h-auto max-h-[85vh] object-contain rounded" />
+      <img
+        src={imageUrl}
+        alt={altText}
+        className="w-full h-auto max-h-[85vh] object-contain rounded"
+      />
     </motion.div>
   </motion.div>
 );
 
-// --- REFINED EventCard COMPONENT (unchanged) ---
-const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({ event, variants }) => {
+// --- REFINED EventCard COMPONENT ---
+const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({
+  event,
+  variants,
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const imageUrl = getFullUrl(event.img_file);
@@ -108,7 +107,9 @@ const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({ event, 
   const description = event.description || "No description provided.";
   const maxLength = 120;
   const isLongDescription = description.length > maxLength;
-  const displayedDescription = isExpanded ? description : `${description.slice(0, maxLength)}...`;
+  const displayedDescription = isExpanded
+    ? description
+    : `${description.slice(0, maxLength)}...`;
 
   return (
     <>
@@ -120,7 +121,12 @@ const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({ event, 
         >
           {imageUrl ? (
             <>
-              <img src={imageUrl} alt={event.event_category} className="w-full h-full object-cover rounded-lg" loading="lazy" />
+              <img
+                src={imageUrl}
+                alt={event.event_category}
+                className="w-full h-full object-cover rounded-lg"
+                loading="lazy"
+              />
               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded-lg">
                 <p className="text-white font-bold text-sm drop-shadow-md">View</p>
               </div>
@@ -133,14 +139,18 @@ const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({ event, 
         {/* Content Box */}
         <div className="relative bg-white shadow-lg rounded-xl flex flex-col group transition-all duration-300 border border-transparent group-hover:border-[#0072bc] -mt-16 flex-grow">
           <div className="p-6 pt-20 flex flex-col flex-grow">
-            <h3 className="text-lg font-bold text-[#003459] mb-2 uppercase">{event.event_category}</h3>
+            <h3 className="text-lg font-bold text-[#003459] mb-2 uppercase">
+              {event.event_category}
+            </h3>
             <div className="flex items-center text-sm text-gray-500 mb-4">
               <CalendarDaysIcon className="w-4 h-4 mr-2 text-[#0072bc]" />
               <span>{formatDate(event.created_at)}</span>
             </div>
 
             <motion.div layout="position" className="text-gray-600 text-base mb-4 flex-grow">
-              <p className="inline">{isLongDescription ? displayedDescription : description}</p>
+              <p className="inline">
+                {isLongDescription ? displayedDescription : description}
+              </p>
               {isLongDescription && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
@@ -179,21 +189,24 @@ const EventCard: React.FC<{ event: EventData; variants: Variants }> = ({ event, 
       </motion.div>
       <AnimatePresence>
         {isModalOpen && imageUrl && (
-          <ImageModal imageUrl={imageUrl} altText={event.event_category} onClose={() => setIsModalOpen(false)} />
+          <ImageModal
+            imageUrl={imageUrl}
+            altText={event.event_category}
+            onClose={() => setIsModalOpen(false)}
+          />
         )}
       </AnimatePresence>
     </>
   );
 };
 
-// --- EVENTS SECTION (modified: removed FLAGSHIP EVENTS / Driving... replaced with red "EVENTS") ---
+// --- EVENTS SECTION (no pre-loader, no contentLoaded prop) ---
 const EventsSection: React.FC<{
-  setContentLoaded: (loaded: boolean) => void;
   currentPage: number;
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   itemsPerPage: number;
   setItemsPerPage: React.Dispatch<React.SetStateAction<number>>;
-}> = ({ setContentLoaded, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage }) => {
+}> = ({ currentPage, setCurrentPage, itemsPerPage, setItemsPerPage }) => {
   const [events, setEvents] = useState<EventData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
@@ -211,17 +224,16 @@ const EventsSection: React.FC<{
     } catch (err: any) {
       setError("Could not fetch events data. Please try again later.");
       toast.error("Error fetching events.");
-    } finally {
-      setContentLoaded(true);
     }
-  }, [setContentLoaded]);
+  }, []);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
   const categories = ["All", ...new Set(events.map((event) => event.event_category))];
-  const filteredEvents = filter === "All" ? events : events.filter((event) => event.event_category === filter);
+  const filteredEvents =
+    filter === "All" ? events : events.filter((event) => event.event_category === filter);
 
   const sortedFilteredEvents = [...filteredEvents].sort((a, b) => {
     const aHasImage = !!a.img_file;
@@ -241,7 +253,10 @@ const EventsSection: React.FC<{
   };
 
   const totalPages = Math.ceil(sortedFilteredEvents.length / itemsPerPage);
-  const paginatedEvents = sortedFilteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedEvents = sortedFilteredEvents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   if (error) {
     return (
@@ -273,7 +288,7 @@ const EventsSection: React.FC<{
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[#ed1c24]">EVENTS</h1>
         </div>
 
-        {/* Filters and items per page (unchanged) */}
+        {/* Filters and items per page */}
         <div className="flex flex-wrap gap-3 mb-12 justify-between items-center">
           <div className="flex flex-wrap gap-3">
             {categories.map((category) => (
@@ -315,12 +330,16 @@ const EventsSection: React.FC<{
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-12 gap-x-8"
         >
           {paginatedEvents.length > 0 ? (
-            paginatedEvents.map((event) => <EventCard key={event.event_id} event={event} variants={cardVariants} />)
+            paginatedEvents.map((event) => (
+              <EventCard key={event.event_id} event={event} variants={cardVariants} />
+            ))
           ) : (
             <div className="col-span-full text-center py-16">
               <CalendarDaysIcon className="w-16 h-16 mx-auto text-gray-600" />
               <h3 className="mt-4 text-xl font-bold text-[#003459]">No Events Found</h3>
-              <p className="text-gray-500 mt-2">No events match your current filter. Try selecting a different category.</p>
+              <p className="text-gray-500 mt-2">
+                No events match your current filter. Try selecting a different category.
+              </p>
             </div>
           )}
         </motion.div>
@@ -330,7 +349,8 @@ const EventsSection: React.FC<{
           <div className="mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-gray-600">
               Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, sortedFilteredEvents.length)} of {sortedFilteredEvents.length} events
+              {Math.min(currentPage * itemsPerPage, sortedFilteredEvents.length)} of{" "}
+              {sortedFilteredEvents.length} events
             </div>
             <div className="flex gap-2">
               <button
@@ -358,32 +378,16 @@ const EventsSection: React.FC<{
   );
 };
 
-// --- MAIN PAGE (header removed) ---
+// --- MAIN PAGE (no pre-loader, no header) ---
 const EventsPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
-
-  // Fallback timeout – loader will disappear once content loads or after 8 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-      }
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [isLoading]);
 
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans flex flex-col">
       <ToastContainer position="top-right" autoClose={4000} theme="colored" />
-      <AnimatePresence>{isLoading && <Loader />}</AnimatePresence>
-
-      {/* No header bar – the page starts directly with the events section */}
-
       <main className="flex-grow">
         <EventsSection
-          setContentLoaded={(loaded) => loaded && setIsLoading(false)}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           itemsPerPage={itemsPerPage}
