@@ -11,15 +11,15 @@ interface SubscriptionItemProps {
 const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index }) => {
   return (
     <motion.div
-      className="flex-shrink-0 w-64 mx-2 sm:mx-3"
+      className="flex-shrink-0 w-56 mx-2 sm:mx-3"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
-      <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 h-56 flex flex-col items-center justify-center p-4 border border-gray-100">
-        {/* Enlarged logo container */}
-        <div className="w-24 h-24 mb-3 flex items-center justify-center bg-gray-50 rounded-full p-2 border-2 border-[#0A51A1] shadow-md">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 h-48 flex flex-col items-center justify-center p-4 border border-white/20 hover:border-[#0A51A1]/30 group">
+        {/* Optimized logo container – smaller and elegant */}
+        <div className="w-16 h-16 mb-3 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-full p-1.5 shadow-inner border border-gray-200 group-hover:border-[#0A51A1] transition-colors duration-300">
           {subscription.logo_img_file ? (
             <img
               src={buildImageUrl(subscription.logo_img_file) || ""}
@@ -27,12 +27,12 @@ const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index
               className="w-full h-full object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
-                  "https://via.placeholder.com/96x96?text=Logo";
+                  "https://via.placeholder.com/64x64?text=Logo";
               }}
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-sm">
+            <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-xs">
               No Logo
             </div>
           )}
@@ -46,7 +46,7 @@ const SubscriptionItem: React.FC<SubscriptionItemProps> = ({ subscription, index
         {/* Category label */}
         <AnimatedText
           text={subscription.category}
-          className="text-xs sm:text-sm font-medium text-gray-500 font-inter uppercase tracking-wide text-center"
+          className="text-xs sm:text-sm font-medium text-gray-600 font-inter uppercase tracking-wide text-center"
         />
       </div>
     </motion.div>
@@ -82,15 +82,15 @@ const SubscriptionCountersSection: React.FC<{ subscriptions: SubscriptionData[] 
   return (
     <section
       ref={sectionRef}
-      className="py-4 sm:py-6 lg:py-8 bg-gradient-to-br from-[#0A51A1] to-[#073b75] overflow-hidden"
+      className="py-6 sm:py-8 lg:py-10 bg-gradient-to-br from-[#0A51A1] to-[#073b75] overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Centered heading with short red underline */}
         <div className="text-center mb-5">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-inter">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-inter drop-shadow-md">
             Our Impact
           </h2>
-          <div className="w-16 h-1 bg-red-500 mx-auto mt-2 rounded-full"></div>
+          <div className="w-16 h-1 bg-red-500 mx-auto mt-2 rounded-full shadow-sm"></div>
         </div>
       </div>
 

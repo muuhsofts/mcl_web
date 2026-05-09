@@ -38,34 +38,22 @@ const formatDate = (dateString: string): string =>
     year: "numeric",
   });
 
-// ✅ CORRECTED: Static assets (images, PDFs) are served from the BASE URL without "/api"
+// Static assets are served from the BASE URL without "/api"
 const getStaticUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
-  // Remove trailing /api from baseURL if present (e.g., http://localhost:5000/api -> http://localhost:5000)
   const baseURL = (axiosInstance.defaults.baseURL || "").replace(/\/api$/, "").replace(/\/$/, "");
   return `${baseURL}/${path.replace(/^\//, "")}`;
 };
 
-// --- LOADER COMPONENT ---
-const Loader: React.FC = () => (
-  <motion.div
-    className="fixed inset-0 flex flex-col items-center justify-center bg-[#0A51A1] z-50"
-    initial={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-      className="mb-4"
-    >
-      <ArrowPathIcon className="w-16 h-16 text-white" />
-    </motion.div>
-    <h2 className="text-2xl font-bold text-white tracking-wider">Loading News...</h2>
-  </motion.div>
+// --- SIMPLE INLINE LOADER (replaces full-screen one) ---
+const InlineLoader: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-20">
+    <ArrowPathIcon className="w-10 h-10 text-[#0A51A1] animate-spin" />
+    <p className="mt-4 text-gray-600 font-medium">Loading article...</p>
+  </div>
 );
 
-// --- SHARE BUTTON COMPONENT ---
+// --- SHARE BUTTON COMPONENT (unchanged) ---
 const ShareButton: React.FC<{
   title: string;
   url: string;
@@ -135,7 +123,7 @@ const ShareButton: React.FC<{
   );
 };
 
-// --- SINGLE NEWS PAGE ---
+// --- SINGLE NEWS PAGE (loader removed) ---
 const SingleNewsPage: React.FC = () => {
   const { news_id } = useParams<{ news_id: string }>();
   const [news, setNews] = useState<NewsData | null>(null);
@@ -243,7 +231,6 @@ const SingleNewsPage: React.FC = () => {
     };
   };
 
-  // Render video only if valid iframe exists; otherwise return null (hidden)
   const renderVideo = (iframe: HTMLIFrameElement | null) => {
     if (!iframe || !iframe.src) return null;
 
@@ -267,8 +254,16 @@ const SingleNewsPage: React.FC = () => {
     );
   };
 
+  // --- Loading state now shows inline loader instead of full-screen overlay ---
   if (isLoading) {
-    return <Loader />;
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <main className="flex-grow flex items-center justify-center">
+          <InlineLoader />
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   if (error || !news) {
@@ -288,7 +283,6 @@ const SingleNewsPage: React.FC = () => {
   }
 
   const { text, iframe } = parseDescription(news.description);
-  // ✅ Use getStaticUrl for images and PDFs (no /api prefix)
   const imageUrl = getStaticUrl(news.news_img);
   const pdfUrl = getStaticUrl(news.pdf_file);
   const currentUrl = window.location.href;
@@ -354,7 +348,7 @@ const SingleNewsPage: React.FC = () => {
                   </motion.div>
                 )}
 
-                {/* News Content (text only, iframe removed from here) */}
+                {/* News Content (text only) */}
                 <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}

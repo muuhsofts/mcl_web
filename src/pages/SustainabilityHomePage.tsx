@@ -202,13 +202,15 @@ const SustainabilityCard: React.FC<{ item: SustainabilityData; variants: Variant
   );
 };
 
-// Sustainability Section (only content now)
-const SustainabilitySection: React.FC<{ setLoaded: (isLoaded: boolean) => void }> = ({ setLoaded }) => {
+// --- FIXED: SustainabilitySection manages its own loading state ---
+const SustainabilitySection: React.FC = () => {
   const [sustainabilityData, setSustainabilityData] = useState<SustainabilityData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSustainabilityData = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const response = await axiosInstance.get("/api/allSustainability");
       if (response.data?.data && Array.isArray(response.data.data)) {
@@ -220,9 +222,9 @@ const SustainabilitySection: React.FC<{ setLoaded: (isLoaded: boolean) => void }
       setError("Could not fetch sustainability data.");
       toast.error("Could not fetch sustainability data.");
     } finally {
-      setLoaded(true);
+      setLoading(false);
     }
-  }, [setLoaded]);
+  }, []);
 
   useEffect(() => {
     fetchSustainabilityData();
@@ -236,6 +238,10 @@ const SustainabilitySection: React.FC<{ setLoaded: (isLoaded: boolean) => void }
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1 },
   };
+
+  if (loading) {
+    return <PageLoader />;
+  }
 
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-gray-50">
@@ -273,10 +279,8 @@ const SustainabilitySection: React.FC<{ setLoaded: (isLoaded: boolean) => void }
   );
 };
 
-// MAIN PAGE COMPONENT (with loader)
+// MAIN PAGE COMPONENT (clean, no loader logic)
 const SustainabilityHomePage: React.FC = () => {
-  const [sectionLoaded, setSectionLoaded] = useState(false);
-
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans flex flex-col">
       <ToastContainer
@@ -291,11 +295,7 @@ const SustainabilityHomePage: React.FC = () => {
       />
       <div className="flex-grow flex flex-col">
         <main className="flex-grow">
-          {!sectionLoaded ? (
-            <PageLoader />
-          ) : (
-            <SustainabilitySection setLoaded={setSectionLoaded} />
-          )}
+          <SustainabilitySection />
         </main>
         <Footer />
       </div>

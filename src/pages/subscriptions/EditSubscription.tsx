@@ -41,7 +41,7 @@ const EditSubscription: React.FC = () => {
         const data = response.data.data;
         setFormData({
           category: data?.category || '',
-          total_viewers: data?.total_viewers?.toString() || '0',
+          total_viewers: data?.total_viewers?.toString() || '',
           logo_img_file: null,
         });
         setCurrentImage(data?.logo_img_file || null);
@@ -76,15 +76,14 @@ const EditSubscription: React.FC = () => {
     const newErrors: FormErrors = {};
     if (!formData.category.trim()) newErrors.category = 'Category is required';
     if (!formData.total_viewers.trim()) {
-        newErrors.total_viewers = 'Total viewers is required';
-    } else if (isNaN(Number(formData.total_viewers)) || Number(formData.total_viewers) < 0) {
-        newErrors.total_viewers = 'Total viewers must be a non-negative number';
+      newErrors.total_viewers = 'Total viewers is required';
     }
+    // Removed numeric check – any string allowed
 
     if (formData.logo_img_file) {
       if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(formData.logo_img_file.type)) {
         newErrors.logo_img_file = 'Only JPEG, PNG, JPG, or GIF files are allowed';
-      } else if (formData.logo_img_file.size > 2 * 1024 * 1024) { // 2MB
+      } else if (formData.logo_img_file.size > 2 * 1024 * 1024) {
         newErrors.logo_img_file = 'Image size must not exceed 2MB';
       }
     }
@@ -103,8 +102,6 @@ const EditSubscription: React.FC = () => {
     if (formData.logo_img_file) {
       payload.append('logo_img_file', formData.logo_img_file);
     }
-    // For compatibility with Laravel's route for updates via POST
-    // payload.append('_method', 'PUT'); 
 
     try {
       const response = await axiosInstance.post(`/api/subscriptions/${subscription_id}/update`, payload, {
@@ -118,8 +115,8 @@ const EditSubscription: React.FC = () => {
     } catch (error: unknown) {
       let errorMessage = 'Failed to update subscription';
       if (axios.isAxiosError(error) && error.response) {
-          errorMessage = error.response.data?.message || errorMessage;
-          if (error.response.data?.errors) setErrors(error.response.data.errors);
+        errorMessage = error.response.data?.message || errorMessage;
+        if (error.response.data?.errors) setErrors(error.response.data.errors);
       }
       toast.error(errorMessage);
     } finally {
@@ -152,8 +149,9 @@ const EditSubscription: React.FC = () => {
 
           <div>
             <label htmlFor="total_viewers" className="block text-sm font-medium text-gray-700">Total Viewers *</label>
-            <input type="number" id="total_viewers" name="total_viewers" value={formData.total_viewers} onChange={handleChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2" min="0"/>
+            <input type="text" id="total_viewers" name="total_viewers" value={formData.total_viewers} onChange={handleChange}
+              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+              placeholder="e.g., 1.2M, 500k, 1000+"/>
             {errors.total_viewers && <p className="mt-1 text-sm text-red-500">{errors.total_viewers}</p>}
           </div>
 

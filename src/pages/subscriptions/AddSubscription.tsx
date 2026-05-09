@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 interface FormData {
   category: string;
-  total_viewers: string; // Use string for form input, convert later
+  total_viewers: string;   // will accept any string
   logo_img_file: File | null;
 }
 
@@ -46,15 +46,14 @@ const AddSubscription: React.FC = () => {
     const newErrors: FormErrors = {};
     if (!formData.category.trim()) newErrors.category = 'Category is required';
     if (!formData.total_viewers.trim()) {
-        newErrors.total_viewers = 'Total viewers is required';
-    } else if (isNaN(Number(formData.total_viewers)) || Number(formData.total_viewers) < 0) {
-        newErrors.total_viewers = 'Total viewers must be a non-negative number';
+      newErrors.total_viewers = 'Total viewers is required';
     }
+    // Removed numeric check – now any string is allowed
 
     if (formData.logo_img_file) {
       if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(formData.logo_img_file.type)) {
         newErrors.logo_img_file = 'Only JPEG, PNG, JPG, or GIF files are allowed';
-      } else if (formData.logo_img_file.size > 2 * 1024 * 1024) { // 2MB
+      } else if (formData.logo_img_file.size > 2 * 1024 * 1024) {
         newErrors.logo_img_file = 'Image size must not exceed 2MB';
       }
     }
@@ -115,10 +114,10 @@ const AddSubscription: React.FC = () => {
           <div>
             <label htmlFor="total_viewers" className="block text-sm font-medium text-gray-700">Total Viewers *</label>
             <input
-              type="number" id="total_viewers" name="total_viewers"
+              type="text" id="total_viewers" name="total_viewers"
               value={formData.total_viewers} onChange={handleChange}
               className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-              min="0"
+              placeholder="e.g., 1.2M, 500k, 1000+"
             />
             {errors.total_viewers && <p className="mt-1 text-sm text-red-500">{errors.total_viewers}</p>}
           </div>
