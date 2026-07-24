@@ -52,7 +52,16 @@ const parseDescription = (description: string | null) => {
 
   const sanitized = DOMPurify.sanitize(description, {
     ALLOWED_TAGS: ["iframe"],
-    ALLOWED_ATTR: ["src", "width", "height", "frameborder", "allow", "allowfullscreen", "title", "referrerpolicy"],
+    ALLOWED_ATTR: [
+      "src",
+      "width",
+      "height",
+      "frameborder",
+      "allow",
+      "allowfullscreen",
+      "title",
+      "referrerpolicy",
+    ],
   });
 
   const parser = new DOMParser();
@@ -69,7 +78,7 @@ const parseDescription = (description: string | null) => {
 };
 
 // ------------------------------
-// News Card Component – with full, uncropped image
+// News Card Component – responsive, full image (object-contain)
 // ------------------------------
 const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
   const imageUrl = getFullMediaUrl(news.news_img);
@@ -83,10 +92,10 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
 
   return (
     <motion.div
-      className="relative group flex flex-col bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl w-80 flex-shrink-0 overflow-hidden h-full"
+      className="relative group flex flex-col bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl overflow-hidden h-full"
       whileHover={{ y: -5 }}
     >
-      {/* Image container – increased height + object-contain ensures full image visible */}
+      {/* Image container – fixed height, object-contain ensures full image visible */}
       <div className="relative h-56 bg-gray-100 flex items-center justify-center">
         {imageUrl ? (
           <img
@@ -94,7 +103,9 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
             alt={news.category}
             className="w-full h-full object-contain"
             loading="lazy"
-            onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400x224?text=Image+Error")}
+            onError={(e) =>
+              (e.currentTarget.src = "https://via.placeholder.com/400x224?text=Image+Error")
+            }
           />
         ) : (
           <PhotoIcon className="w-16 h-16 text-gray-300" />
@@ -107,8 +118,12 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
           <CalendarDaysIcon className="w-4 h-4 mr-1.5" />
           {formatDate(news.created_at)}
         </p>
-        <h3 className="text-xl font-bold text-[#003459] mb-2 line-clamp-2">{news.category}</h3>
-        <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-4">{shortPreview}</p>
+        <h3 className="text-xl font-bold text-[#003459] mb-2 line-clamp-2">
+          {news.category}
+        </h3>
+        <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-4">
+          {shortPreview}
+        </p>
 
         <button
           onClick={handleReadMore}
@@ -136,7 +151,7 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
 };
 
 // ------------------------------
-// Horizontal scrolling news section (loader removed)
+// News Section – now using responsive grid (4 columns on large screens)
 // ------------------------------
 const NewsSection: React.FC<{
   news: NewsData[];
@@ -153,6 +168,7 @@ const NewsSection: React.FC<{
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 15 }, (_, i) => (currentYear - i).toString());
 
+  // Sort: items with images first
   const sortedNews = [...news].sort((a, b) => {
     const aHasImage = !!a.news_img;
     const bHasImage = !!b.news_img;
@@ -162,16 +178,22 @@ const NewsSection: React.FC<{
   });
 
   const totalPages = Math.ceil(sortedNews.length / itemsPerPage);
-  const paginatedNews = sortedNews.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedNews = sortedNews.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <section className="py-16 bg-[#f0f2f5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003459]">Our News and Updates</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003459]">
+            Our News and Updates
+          </h2>
           <div className="w-20 h-1 bg-red-500 mx-auto mt-3 rounded-full" />
         </div>
 
+        {/* Filters */}
         <div className="bg-white p-4 rounded-xl shadow-md mb-12 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
           <select
             value={filters.year}
@@ -183,7 +205,9 @@ const NewsSection: React.FC<{
           >
             <option value="">All Years</option>
             {years.map((y) => (
-              <option key={y} value={y}>{y}</option>
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
           <select
@@ -196,7 +220,9 @@ const NewsSection: React.FC<{
           >
             <option value="">All Months</option>
             {months.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
           <select
@@ -225,19 +251,20 @@ const NewsSection: React.FC<{
 
         {paginatedNews.length > 0 ? (
           <>
-            <div className="overflow-x-auto pb-6">
-              <div className="flex gap-6 w-max">
-                {paginatedNews.map((item) => (
-                  <NewsCard key={item.news_id} news={item} />
-                ))}
-              </div>
+            {/* Responsive Grid: 1 column on mobile, 2 on tablets, 4 on large screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {paginatedNews.map((item) => (
+                <NewsCard key={item.news_id} news={item} />
+              ))}
             </div>
 
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-gray-600">
                   Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(currentPage * itemsPerPage, sortedNews.length)} of {sortedNews.length} news items
+                  {Math.min(currentPage * itemsPerPage, sortedNews.length)} of{" "}
+                  {sortedNews.length} news items
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -265,7 +292,9 @@ const NewsSection: React.FC<{
           <div className="text-center py-16 bg-white rounded-xl shadow-sm">
             <CalendarDaysIcon className="w-16 h-16 mx-auto text-gray-400" />
             <h3 className="mt-4 text-xl font-bold text-[#003459]">No News Found</h3>
-            <p className="text-gray-500 mt-2">No articles match your current filters. Try clearing them.</p>
+            <p className="text-gray-500 mt-2">
+              No articles match your current filters. Try clearing them.
+            </p>
           </div>
         )}
       </div>
@@ -274,7 +303,7 @@ const NewsSection: React.FC<{
 };
 
 // ------------------------------
-// Main News Home Page (loader removed)
+// Main News Home Page
 // ------------------------------
 const NewsHomePage: React.FC = () => {
   const [allNews, setAllNews] = useState<NewsData[]>([]);
@@ -303,8 +332,10 @@ const NewsHomePage: React.FC = () => {
   }, [fetchNews]);
 
   const filteredNews = allNews.filter((item) => {
-    if (year && new Date(item.created_at).getFullYear().toString() !== year) return false;
-    if (month && (new Date(item.created_at).getMonth() + 1).toString() !== month) return false;
+    if (year && new Date(item.created_at).getFullYear().toString() !== year)
+      return false;
+    if (month && (new Date(item.created_at).getMonth() + 1).toString() !== month)
+      return false;
     return true;
   });
 
@@ -337,13 +368,15 @@ const NewsHomePage: React.FC = () => {
           setItemsPerPage={setItemsPerPage}
         />
       </main>
-      <footer><Footer /></footer>
+      <footer>
+        <Footer />
+      </footer>
     </div>
   );
 };
 
 // ------------------------------
-// Single News Page (loader removed)
+// Single News Page
 // ------------------------------
 const SingleNewsPage: React.FC = () => {
   const { news_id } = useParams<{ news_id: string }>();
@@ -403,8 +436,14 @@ const SingleNewsPage: React.FC = () => {
               ← Back to News
             </button>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-extrabold text-[#003459]">{news.category}</h1>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-12"
+            >
+              <h1 className="text-4xl md:text-5xl font-extrabold text-[#003459]">
+                {news.category}
+              </h1>
               <p className="mt-4 text-sm font-semibold text-[#0d7680] flex items-center justify-center">
                 <CalendarDaysIcon className="w-5 h-5 mr-2" />
                 {formatDate(news.created_at)}
@@ -412,17 +451,27 @@ const SingleNewsPage: React.FC = () => {
             </motion.div>
 
             {imageUrl && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-12">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-12"
+              >
                 <img
                   src={imageUrl}
                   alt={news.category}
                   className="w-full h-auto max-h-[500px] object-contain rounded-lg shadow-lg"
-                  onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/800x400?text=Image+Error")}
+                  onError={(e) =>
+                    (e.currentTarget.src = "https://via.placeholder.com/800x400?text=Image+Error")
+                  }
                 />
               </motion.div>
             )}
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="prose prose-lg max-w-none text-gray-700">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="prose prose-lg max-w-none text-gray-700"
+            >
               <div className="leading-relaxed whitespace-pre-line">{text}</div>
 
               {iframe && iframe.src && (
@@ -455,7 +504,9 @@ const SingleNewsPage: React.FC = () => {
           </div>
         </section>
       </main>
-      <footer><Footer /></footer>
+      <footer>
+        <Footer />
+      </footer>
     </div>
   );
 };
