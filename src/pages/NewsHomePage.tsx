@@ -78,7 +78,7 @@ const parseDescription = (description: string | null) => {
 };
 
 // ------------------------------
-// News Card Component – wider padding
+// News Card Component
 // ------------------------------
 const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
   const imageUrl = getFullMediaUrl(news.news_img);
@@ -95,7 +95,6 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
       className="relative group flex flex-col bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl overflow-hidden h-full"
       whileHover={{ y: -5 }}
     >
-      {/* Image container – fixed height */}
       <div className="relative h-56 bg-gray-100 flex items-center justify-center">
         {imageUrl ? (
           <img
@@ -112,7 +111,6 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
         )}
       </div>
 
-      {/* Content area – increased padding from p-5 to p-6 */}
       <div className="p-6 flex flex-col flex-grow">
         <p className="text-sm font-semibold text-[#0d7680] mb-2 flex items-center">
           <CalendarDaysIcon className="w-4 h-4 mr-1.5" />
@@ -151,7 +149,7 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
 };
 
 // ------------------------------
-// News Section – grid changed to 3 columns on large screens
+// News Section – with updated per‑page options
 // ------------------------------
 const NewsSection: React.FC<{
   news: NewsData[];
@@ -228,12 +226,14 @@ const NewsSection: React.FC<{
             value={itemsPerPage}
             onChange={(e) => {
               setItemsPerPage(Number(e.target.value));
-              setCurrentPage(1);
+              setCurrentPage(1); // reset to first page when changing per‑page
             }}
             className="w-full p-2 border border-gray-300 rounded-md"
           >
+            <option value={5}>5 per page</option>
             <option value={10}>10 per page</option>
             <option value={20}>20 per page</option>
+            <option value={30}>30 per page</option>
             <option value={50}>50 per page</option>
           </select>
           <button
@@ -250,7 +250,7 @@ const NewsSection: React.FC<{
 
         {paginatedNews.length > 0 ? (
           <>
-            {/* Responsive Grid: 1 column on mobile, 2 on tablets, 3 on large screens – wider cards */}
+            {/* Responsive Grid: 1 column on mobile, 2 on tablets, 3 on large screens */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedNews.map((item) => (
                 <NewsCard key={item.news_id} news={item} />
