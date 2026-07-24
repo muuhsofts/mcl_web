@@ -78,7 +78,7 @@ const parseDescription = (description: string | null) => {
 };
 
 // ------------------------------
-// News Card Component – responsive, full image (object-contain)
+// News Card Component – wider padding
 // ------------------------------
 const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
   const imageUrl = getFullMediaUrl(news.news_img);
@@ -95,7 +95,7 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
       className="relative group flex flex-col bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl overflow-hidden h-full"
       whileHover={{ y: -5 }}
     >
-      {/* Image container – fixed height, object-contain ensures full image visible */}
+      {/* Image container – fixed height */}
       <div className="relative h-56 bg-gray-100 flex items-center justify-center">
         {imageUrl ? (
           <img
@@ -112,8 +112,8 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
         )}
       </div>
 
-      {/* Content area */}
-      <div className="p-5 flex flex-col flex-grow">
+      {/* Content area – increased padding from p-5 to p-6 */}
+      <div className="p-6 flex flex-col flex-grow">
         <p className="text-sm font-semibold text-[#0d7680] mb-2 flex items-center">
           <CalendarDaysIcon className="w-4 h-4 mr-1.5" />
           {formatDate(news.created_at)}
@@ -151,7 +151,7 @@ const NewsCard: React.FC<{ news: NewsData }> = ({ news }) => {
 };
 
 // ------------------------------
-// News Section – now using responsive grid (4 columns on large screens)
+// News Section – grid changed to 3 columns on large screens
 // ------------------------------
 const NewsSection: React.FC<{
   news: NewsData[];
@@ -168,7 +168,6 @@ const NewsSection: React.FC<{
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 15 }, (_, i) => (currentYear - i).toString());
 
-  // Sort: items with images first
   const sortedNews = [...news].sort((a, b) => {
     const aHasImage = !!a.news_img;
     const bHasImage = !!b.news_img;
@@ -251,8 +250,8 @@ const NewsSection: React.FC<{
 
         {paginatedNews.length > 0 ? (
           <>
-            {/* Responsive Grid: 1 column on mobile, 2 on tablets, 4 on large screens */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Responsive Grid: 1 column on mobile, 2 on tablets, 3 on large screens – wider cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedNews.map((item) => (
                 <NewsCard key={item.news_id} news={item} />
               ))}
