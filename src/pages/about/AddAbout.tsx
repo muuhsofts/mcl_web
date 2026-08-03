@@ -92,7 +92,7 @@ const AddAbout: React.FC = () => {
       toast.success(response.data.message || 'About entry created successfully', {
         position: 'top-right',
         autoClose: 2000,
-        onClose: () => navigate('/about'),
+        onClose: () => navigate('/admin/about'),
       });
 
     } catch (error) {

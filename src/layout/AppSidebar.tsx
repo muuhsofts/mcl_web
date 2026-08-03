@@ -36,7 +36,7 @@ const getNavItemsForRole = (roleId: number): NavItem[] => {
     { name: "Users", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-600 text-white">👥</span>, subItems: [{ name: "Users", path: "/users" }] },
     { name: "User Logs", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-white">📜</span>, subItems: [{ name: "View Logs", path: "/user-logs" }] },
     { name: "Brands", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-600 text-white">ℹ️</span>, subItems: [{ name: "Our Brand", path: "/brands" }] },
-    { name: "About Us", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-600 text-white">ℹ️</span>, subItems: [{ name: "Home Sliders", path: "/about" },{ name: "Manage About", path: "/aboutMwananchi" }] },
+    { name: "About Us", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-600 text-white">ℹ️</span>, subItems: [{ name: "Home Sliders", path: "/admin/about" },{ name: "Manage About", path: "/aboutMwananchi" }] },
     //  { name: "About Mwananchi", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white">ℹ️</span>, subItems: [] },
     { name: "Company", icon: <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-600 text-white">🏢</span>, subItems: [
         { name: "Home Page", path: "/company" },
